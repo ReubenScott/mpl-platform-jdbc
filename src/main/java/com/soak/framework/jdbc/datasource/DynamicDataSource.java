@@ -1,4 +1,4 @@
-package com.soak.framework.jdbc;
+package com.soak.framework.jdbc.datasource;
 
 import java.io.InputStream;
 import java.sql.Connection;
@@ -27,6 +27,7 @@ import org.dom4j.io.SAXReader;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.soak.framework.jdbc.context.DBParameter;
 import com.soak.framework.util.StringUtil;
 
 @SuppressWarnings("unchecked")
@@ -36,7 +37,7 @@ public class DynamicDataSource {
 
   private volatile static DynamicDataSource dbSource;
 
-  private final Map<String, JdbcConfig> jdbcConfigMap = new HashMap<String, JdbcConfig>();
+  private final Map<String, DBParameter> jdbcConfigMap = new HashMap<String, DBParameter>();
 
   private static String defaultDBalias;
 
@@ -94,7 +95,7 @@ public class DynamicDataSource {
         String user = foo.elementText("username").trim();
         String password = foo.elementText("password").trim();
 
-        JdbcConfig jdbcConfig = new JdbcConfig();
+        DBParameter jdbcConfig = new DBParameter();
         jdbcConfig.setDriverclass(driverName);
         jdbcConfig.setUrl(url);
         jdbcConfig.setUsername(user);
@@ -233,7 +234,7 @@ public class DynamicDataSource {
     if (StringUtil.isEmpty(dbalias)) {
       dbalias = defaultDBalias;
     }
-    JdbcConfig dbconf = jdbcConfigMap.get(dbalias);
+    DBParameter dbconf = jdbcConfigMap.get(dbalias);
     if(dbconf!=null){
       String driveClassName = dbconf.getDriverclass();
       String url = dbconf.getUrl();
@@ -261,7 +262,7 @@ public class DynamicDataSource {
    * @return
    */
   public Connection getConnection(String alias) {
-    JdbcConfig config = jdbcConfigMap.get(alias);
+    DBParameter config = jdbcConfigMap.get(alias);
     String driveClassName = config.getDriverclass();
     String url = config.getUrl();
     String username = config.getUsername();

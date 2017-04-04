@@ -1,6 +1,6 @@
-package com.soak.framework.jdbc;
+package com.soak.framework.jdbc.context;
 
-public class JdbcConfig {
+public class DBParameter {
 
   /**
    * 数据库相关信息 1、驱动；2、url；3、user；4、password

@@ -11,9 +11,11 @@ import java.util.List;
 import org.junit.Before;
 import org.junit.Test;
 
+import com.soak.framework.jdbc.core.JdbcTemplate;
+
 public class JdbcTemplateTest {
 
-  JdbcHandler jdbcHandler;
+  JdbcTemplate jdbcHandler;
 
   @Before
   public void setUp() throws Exception {
@@ -51,14 +53,14 @@ public class JdbcTemplateTest {
         System.out.println(filePath);
 //        jdbcHandler.truncateTable("",null, "atnd_punch_record");
         // 导入打卡记录
-        jdbcHandler.loadExcelFile("","","atnd_punch_record", filePath);
+        jdbcHandler.loadExcelFile("","atnd_punch_record", filePath);
         // 打卡记录 合并
-        jdbcHandler.callProcedure("","sp_f_atnd_punch_record", new Object[] { 1 });
+        jdbcHandler.callProcedure("sp_f_atnd_punch_record", new Object[] { 1 });
       }
     }
     
     // 更新打卡记录  没有员工号的部分数据
-    jdbcHandler.execute("","UPDATE f_atnd_punch_record AS t1 LEFT JOIN f_emp_info T2 ON t1.empname = T2.empname SET t1.empno = T2.empno WHERE t1.empno IS  NULL");
+    jdbcHandler.execute("UPDATE f_atnd_punch_record AS t1 LEFT JOIN f_emp_info T2 ON t1.empname = T2.empname SET t1.empno = T2.empno WHERE t1.empno IS  NULL");
     
   }
 
@@ -71,7 +73,7 @@ public class JdbcTemplateTest {
 //  @Test
   public void testLoadCVS() {
 //    jdbcHandler.loadCsvFile("EDW","YKJD_CUST_ENT", "D:/home/20160318/CUST_ENT.del", (char) 44);
-    jdbcHandler.loadCsvFile("","etl","edw_tabdellist", "E:/启东农商银行/二期/ETL_92/init/data/ETL.EDW_TABDELLIST.del", (char)44 );
+    jdbcHandler.loadCsvFile("etl","edw_tabdellist", "E:/启东农商银行/二期/ETL_92/init/data/ETL.EDW_TABDELLIST.del", (char)44 );
 //    jdbcHandler.loadCsvFile("YKJD_CUST_ENT", "D:/home/20160318/CUST_ENT.del", ',');
   }
 
@@ -84,7 +86,7 @@ public class JdbcTemplateTest {
     // System.out.println(str);
     // Timestamp.valueOf(str);//转换时间字符串为Timestamp
     // System.out.println(Timestamp.valueOf(str));//输出结果
-    jdbcHandler.loadExcelFile("","","attendance_record", "E:/考勤/打卡记录.xlsx");
+    jdbcHandler.loadExcelFile("","attendance_record", "E:/考勤/打卡记录.xlsx");
     // etlJobImpl.loadExcelFile("attendance_record", "E:/考勤/详细刷卡记录2016年2月份.xls");
   }
   

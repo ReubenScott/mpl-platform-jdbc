@@ -1,4 +1,4 @@
-package com.soak.framework.jdbc;
+package com.soak.framework.jdbc.pool;
 
 import java.util.Enumeration;
 import java.util.Hashtable;
@@ -25,11 +25,11 @@ public abstract class ObjectPooling<Object> {
 	/**
 	 * Expiration to to expire object.
 	 */
-	private final long expirationTime;
+	private final long expirationTime =  100000 ;
 	/**
 	 * Minimum Connections.
 	 */
-	private final Integer minimumConnection;
+	private final Integer minimumConnection = 5 ;
 
 	/**
 	 * Logger .
@@ -44,8 +44,8 @@ public abstract class ObjectPooling<Object> {
 	 * Constructor to Initialize the expiration and hash tables.
 	 */
 	public ObjectPooling() {
-		this.expirationTime = Long.parseLong(this.confProperties.getProperty("DB.CONNECTION.EXPIRATION.TIME"));
-		this.minimumConnection = Integer.parseInt(this.confProperties.getProperty("DB.CONNECTION.POOL.MINIMUM.SIZE"));
+//		this.expirationTime = Long.parseLong(this.confProperties.getProperty("DB.CONNECTION.EXPIRATION.TIME"));
+//		this.minimumConnection = Integer.parseInt(this.confProperties.getProperty("DB.CONNECTION.POOL.MINIMUM.SIZE"));
 		this.locked = new Hashtable<Object, Long>();
 		this.unlocked = new Hashtable<Object, Long>();
 	}
@@ -105,6 +105,7 @@ public abstract class ObjectPooling<Object> {
 		this.locked.put(objPool, now);
 		return (objPool);
 	}
+	
 	/**
 	 * Removing object from the locked state to unlocked state once job completed.
 	 * @param objPool .
@@ -113,6 +114,7 @@ public abstract class ObjectPooling<Object> {
 		this.locked.remove(objPool);
 		this.unlocked.put(objPool, System.currentTimeMillis());
 	}
+	
 	/**
 	 * Returning the hash table.
 	 * @return Hashtable<Object, Long> .
@@ -120,4 +122,5 @@ public abstract class ObjectPooling<Object> {
 	final Hashtable<Object, Long> getLockedHash(){
 		return this.locked;
 	}
+	
 }

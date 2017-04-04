@@ -1,4 +1,4 @@
-package com.soak.framework.jdbc;
+/*package com.soak.framework.jdbc;
 
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
@@ -51,6 +51,7 @@ import com.soak.framework.constant.DBType;
 import com.soak.framework.date.DateStyle;
 import com.soak.framework.date.DateUtil;
 import com.soak.framework.io.IOHandler;
+import com.soak.framework.jdbc.datasource.DynamicDataSource;
 import com.soak.framework.orm.Column;
 import com.soak.framework.orm.Table;
 import com.soak.framework.util.BeanUtil;
@@ -69,11 +70,11 @@ public class JdbcHandler {
   private final int BATCHCOUNT = 5000; // 批量提交记录数
 
 
-  /**
+  *//**
    * 实例化
    * 
    * @return
-   */
+   *//*
   public static JdbcHandler getInstance() {
     if (instance == null) {
       synchronized (JdbcHandler.class) {
@@ -85,30 +86,30 @@ public class JdbcHandler {
     return instance;
   }
 
-  /**
+  *//**
    * 获取 数据库连接
    * 
    * @return
-   */
+   *//*
   private Connection getConnection(String dbalias) {
 //    Connection connection = DynamicDataSource.getInstance().getSingleConnection(dbalias);
     Connection connection = DynamicDataSource.getInstance().checkOut(dbalias);
-    /*
+    
      * Connection connection = null; if (threadLocalConnection.get() == null) {
      * connection = CommonDataSource.getInstance().getConnection();
      * threadLocalConnection.set(connection); } else { connection =
      * threadLocalConnection.get(); } return connection;
-     */
+     
     // return CommonDataSource.getInstance().getPollConnection();
     return connection;
   }
 
-  /**
+  *//**
    * 设置参数
    * 
    * @param ps
    * @param params
-   */
+   *//*
   private void setPreparedValues(PreparedStatement ps, Object... params) {
     try {
       if (params != null && params.length > 0) {
@@ -133,13 +134,13 @@ public class JdbcHandler {
     }
   }
 
-  /**
+  *//**
    * 关闭数据库连接
    * 
    * @param conn
    * @param st
    * @param rs
-   */
+   *//*
   private void release(String alias , Connection connection, Statement st, ResultSet rs) {
     try {
       if (rs != null) {
@@ -160,9 +161,9 @@ public class JdbcHandler {
     }
   }
 
-  /**
+  *//**
    * 获取数据库 类型
-   */
+   *//*
   public DBType getDBProductType(String dbalias) {
     DBType dbType = null ;
     try {
@@ -176,10 +177,10 @@ public class JdbcHandler {
     return dbType;
   }
 
-  /***
+  *//***
    * 
    * @return
-   */
+   *//*
   public String getCurrentSchema(String dbalias) {
     Connection conn = this.getConnection(dbalias);
     String schema = null;
@@ -189,7 +190,7 @@ public class JdbcHandler {
         case DB2:
           schema = conn.getMetaData().getUserName();
           break;
-        case MYSQL:
+        case MySQL:
           schema = conn.getCatalog();  
           break;
         default:
@@ -205,10 +206,10 @@ public class JdbcHandler {
     return schema;
   }
 
-  /***
+  *//***
    * 
    * @return
-   */
+   *//*
   public List<String> getSchemas(String dbalias) {
     Connection conn = this.getConnection(dbalias);
     List<String> schemas = new ArrayList<String>();
@@ -226,13 +227,13 @@ public class JdbcHandler {
     return schemas;
   }
   
-  /***
+  *//***
    *  判断数据库 表 是否存在
    *  
    * @param schema
    * @param tableName
    * @return
-   */
+   *//*
   public boolean isTableExits(String dbalias, String schema, String tableName){
     boolean flag = false ;
     schema  = StringUtil.isEmpty(schema) ? null : schema.toUpperCase() ;
@@ -245,7 +246,7 @@ public class JdbcHandler {
         case DB2:
           rs = meta.getTables(null, schema, tableName.toUpperCase(), new String[]{"TABLE"});
           break;
-        case MYSQL:
+        case MySQL:
           rs = meta.getTables(schema, null, tableName.toUpperCase(), new String[]{"TABLE"});
           break;
         default:
@@ -268,12 +269,12 @@ public class JdbcHandler {
   }
   
 
-  /**
+  *//**
    * 删除表
    * @param schema
    * @param tableName
    * @return
-   */
+   *//*
   public boolean dropTable(String dbalias, String schema, String tableName){
     schema  = StringUtil.isEmpty(schema) ? null : schema.toUpperCase() ;
     if(isTableExits(dbalias, schema, tableName)){
@@ -288,10 +289,10 @@ public class JdbcHandler {
   }
   
 
-  /***
+  *//***
    * 获取表字段 类型信息
    * 
-   */
+   *//*
   private List<Integer> getColumnTypes(Connection connection, String schema, String tablename) {
     List<Integer> columnTypes = new ArrayList<Integer>();
     ResultSet rs = null;
@@ -340,13 +341,13 @@ public class JdbcHandler {
     return columnTypes;
   }
 
-  /**
+  *//**
    * 根据数据库 字段类型 返回值
    * 
    * @param dbColumnType
    * @param value
    * @return
-   */
+   *//*
   private Object castDBType(int dbColumnType, String value) {
     if (value == null) {
       return null;
@@ -501,12 +502,12 @@ public class JdbcHandler {
     }
   }
 
-  /**
+  *//**
    * 数据库 插入记录
    * 
    * @param domain
    * @return
-   */
+   *//*
   public int saveSample(String dbalias , Object domain) {
     Class sample = domain.getClass();
     String packageName = sample.getPackage().getName();
@@ -544,7 +545,7 @@ public class JdbcHandler {
   }
 
   
-  /**
+  *//**
    * 通过实体类生成 insert into sql语句
    * 
    * @param annoBean
@@ -553,7 +554,7 @@ public class JdbcHandler {
    * @throws IllegalArgumentException
    * @throws IllegalAccessException
    * @throws NumException
-   */
+   *//*
   public boolean saveAnnotatedBean(String dbalias , Object... annoBeans) {
     List<String> columns = new ArrayList<String>();
     List<Object[]> paramList = new ArrayList<Object[]>();
@@ -645,7 +646,7 @@ public class JdbcHandler {
     return executeBatch(dbalias ,sql.toString(), paramList);
   }
   
-  /**
+  *//**
    * 通过实体类生成 删除 语句
    * 
    * @param annoBean
@@ -654,7 +655,7 @@ public class JdbcHandler {
    * @throws IllegalArgumentException
    * @throws IllegalAccessException
    * @throws NumException
-   */
+   *//*
   public boolean deleteAnnotatedBean(String dbalias , Object annoBean) {
     List<String> columns = new ArrayList<String>();
     List<Object[]> paramList = new ArrayList<Object[]>();
@@ -741,13 +742,13 @@ public class JdbcHandler {
     return executeBatch(dbalias ,sql.toString(), paramList);
   }
 
-  /** ************** "select" start *************** */
+  *//** ************** "select" start *************** *//*
   
 
-  /**
+  *//**
    * 根据模板查询 queryBySample
    * 
-   */
+   *//*
   public <T> T findOneByAnnotatedSample(String dbalias , T annotatedSample , Restrictions... restrictions ) {
     List<String> columns = new ArrayList<String>();
     List<String> fieldNames = new ArrayList<String>();
@@ -759,14 +760,14 @@ public class JdbcHandler {
     // 获取类的class
     Class<? extends Object> stuClass = annotatedSample.getClass();
 
-    /* 通过获取类的类注解，来获取类映射的表名称 */
+     通过获取类的类注解，来获取类映射的表名称 
     if (stuClass.isAnnotationPresent(Table.class)) { // 如果类映射了表
       Table table = (Table) stuClass.getAnnotation(Table.class);
       // sb.append(table.name() + " where 1=1 "); // 加入表名称
       schema = table.schema();
       tablename = table.name();
 
-      /* 遍历所有的字段 */
+       遍历所有的字段 
       Field[] fields = stuClass.getDeclaredFields();// 获取类的字段信息
       for (Field field : fields) {
         if (field.isAnnotationPresent(Column.class)) {
@@ -781,7 +782,7 @@ public class JdbcHandler {
             // get到field的值
             Method method = stuClass.getMethod(methodName);
             Object fieldValue = method.invoke(annotatedSample);
-            /* 空字段跳过拼接过程。。。 */// 如果没有值，不拼接
+             空字段跳过拼接过程。。。 // 如果没有值，不拼接
             if (fieldValue != null) {
               condition.append(" and " + columnName + "=" + "?");
               params.add(fieldValue);
@@ -843,10 +844,10 @@ public class JdbcHandler {
     return obj;
   }
 
-  /**
+  *//**
    * 根据模板查询 queryBySample
    * 
-   */ 
+   *//* 
   public <T> List<T> findByAnnotatedSample(String dbalias , T annotatedSample , Restrictions... restrictions ) {
     List<String> columns = new ArrayList<String>();
     List<String> fieldNames = new ArrayList<String>();
@@ -858,14 +859,14 @@ public class JdbcHandler {
     // 获取类的class
     Class<? extends Object> stuClass = annotatedSample.getClass();
 
-    /* 通过获取类的类注解，来获取类映射的表名称 */
+     通过获取类的类注解，来获取类映射的表名称 
     if (stuClass.isAnnotationPresent(Table.class)) { // 如果类映射了表
       Table table = (Table) stuClass.getAnnotation(Table.class);
       // sb.append(table.name() + " where 1=1 "); // 加入表名称
       schema = table.schema();
       tablename = table.name();
 
-      /* 遍历所有的字段 */
+       遍历所有的字段 
       Field[] fields = stuClass.getDeclaredFields();// 获取类的字段信息
       for (Field field : fields) {
         if (field.isAnnotationPresent(Column.class)) {
@@ -880,7 +881,7 @@ public class JdbcHandler {
             // get到field的值
             Method method = stuClass.getMethod(methodName);
             Object fieldValue = method.invoke(annotatedSample);
-            /* 空字段跳过拼接过程。。。 */// 如果没有值，不拼接
+             空字段跳过拼接过程。。。 // 如果没有值，不拼接
             if (fieldValue != null) {
               condition.append(" and " + columnName + "=" + "?");
               params.add(fieldValue);
@@ -942,12 +943,12 @@ public class JdbcHandler {
     return result;
   }
 
-  /**
+  *//**
    * 
    * sql 中 AS 
    * 
    * 返回 封装 集合
-   */
+   *//*
   public <T> List<T> querySampleList(String dbalias, Class<T> sample, String sql, Object... params) {
     Connection conn = this.getConnection(dbalias);
     ResultSetMetaData rsmdt = null;
@@ -981,7 +982,7 @@ public class JdbcHandler {
   }
 
   
-  /**
+  *//**
    * 查询一条记录
    * 
    * @param sql
@@ -989,7 +990,7 @@ public class JdbcHandler {
    * @param paramList
    *          ArrayList
    * @return HashMap
-   */
+   *//*
   public Object queryOneObject(String dbalias, String sql, Object... params) {
     Connection conn = this.getConnection(dbalias);
     PreparedStatement ps = null;
@@ -1009,7 +1010,7 @@ public class JdbcHandler {
     }
   }
   
-  /**
+  *//**
    * 查询一条记录
    * 
    * @param sql
@@ -1017,7 +1018,7 @@ public class JdbcHandler {
    * @param paramList
    *          ArrayList
    * @return HashMap
-   */
+   *//*
   public List<?> queryOneAsList(String dbalias, String sql, Object... params) {
     Connection conn = this.getConnection(dbalias);
     PreparedStatement ps = null;
@@ -1043,7 +1044,7 @@ public class JdbcHandler {
     }
   }
 
-  /**
+  *//**
    * 查询一条记录
    * 
    * @param sql
@@ -1051,7 +1052,7 @@ public class JdbcHandler {
    * @param paramList
    *          ArrayList
    * @return HashMap
-   */
+   *//*
   public HashMap queryOneAsMap(String dbalias, String sql, Object... params) {
     Connection conn = this.getConnection(dbalias);
     PreparedStatement ps = null;
@@ -1082,12 +1083,12 @@ public class JdbcHandler {
     }
   }
 
-  /**
+  *//**
    * 查询
    * 
    * @param sql
    * @return
-   */
+   *//*
   public List<List> queryForList(String dbalias, String sql, Object... params) {
     Connection conn = this.getConnection(dbalias);
     PreparedStatement ps = null;
@@ -1114,13 +1115,13 @@ public class JdbcHandler {
     return result;
   }
 
-  /**
+  *//**
    * 查询数据
    * 
    * @param sql
    *          String
    * @return HashMap[]
-   */
+   *//*
   public HashMap[] queryForMap(String dbalias, String sql, Object... params) {
     Connection conn = this.getConnection(dbalias);
     PreparedStatement ps = null;
@@ -1167,7 +1168,7 @@ public class JdbcHandler {
     return null;
   }
 
-  /**
+  *//**
    * 查询sql执行的总记录数,带参数
    * 
    * @param sql
@@ -1175,7 +1176,7 @@ public class JdbcHandler {
    * @param paramList
    *          ArrayList
    * @return int
-   */
+   *//*
   public int queryCountResult(String dbalias, String sql, Object... params) {
     Connection conn = this.getConnection(dbalias);
     PreparedStatement ps = null;
@@ -1200,12 +1201,12 @@ public class JdbcHandler {
     }
   }
 
-  /** ************** "select" end *************** */
+  *//** ************** "select" end *************** *//*
   
-  /***
+  *//***
    * 
    * 执行DDL 语句
-   */
+   *//*
   public boolean execute(String dbalias, String sql, Object... params) {
     boolean result = false ;
     Connection conn = this.getConnection(dbalias);
@@ -1230,9 +1231,9 @@ public class JdbcHandler {
   }
   
 
-  /** ************** "insert, delete , update" start *************** */
+  *//** ************** "insert, delete , update" start *************** *//*
 
-  /**
+  *//**
    * 执行一条带参数的sql
    * 
    * @param sql
@@ -1240,7 +1241,7 @@ public class JdbcHandler {
    * @param param
    *          List
    * @return 影响行数
-   */
+   *//*
   public int executeUpdate(String dbalias, String sql, Object... params) {
     int count = 0;
     Connection conn = this.getConnection(dbalias);
@@ -1263,7 +1264,7 @@ public class JdbcHandler {
     return count;
   }
 
-  /**
+  *//**
    * 一条带参数的sql 执行多次
    * 
    * @param sql
@@ -1271,7 +1272,7 @@ public class JdbcHandler {
    * @param param
    *          List Object[] 的集合
    * @return boolean
-   */
+   *//*
   public boolean executeBatch(String dbalias, String sql, List<Object[]> arrays) {
     boolean result = false ;
     Connection connection = this.getConnection(dbalias);
@@ -1307,13 +1308,13 @@ public class JdbcHandler {
     return result;
   }
 
-  /**
+  *//**
    * 执行一批sql
    * 
    * @param sqlList
    *          List
    * @return boolean
-   */
+   *//*
   public void executeBatch(String dbalias, List<String> sqls) {
     Connection conn = this.getConnection(dbalias);
     Statement st = null;
@@ -1340,20 +1341,20 @@ public class JdbcHandler {
   }
 
   
-  /**
+  *//**
    * 
    * 根据实例更新
    * 
-   */
+   *//*
   public boolean updateAnnotatedEntity(String dbalias , Object annotatedSample , List<Restrictions> restrictions ) {
     return updateAnnotatedEntity(dbalias, annotatedSample, restrictions.toArray(new Restrictions[restrictions.size()]));
   }
 
-  /**
+  *//**
    * 
    * 根据实例更新
    * 
-   */
+   *//*
   public boolean updateAnnotatedEntity(String dbalias , Object annotatedSample , Restrictions... restrictions ) {
     boolean result = false ;
     List<String> fieldNames = new ArrayList<String>();
@@ -1366,7 +1367,7 @@ public class JdbcHandler {
     // 获取类的class
     Class<? extends Object> stuClass = annotatedSample.getClass();
 
-    /* 通过获取类的类注解，来获取类映射的表名称 */
+     通过获取类的类注解，来获取类映射的表名称 
     if (stuClass.isAnnotationPresent(Table.class)) { // 如果类映射了表
       Table table = (Table) stuClass.getAnnotation(Table.class);
       schema = table.schema();
@@ -1377,7 +1378,7 @@ public class JdbcHandler {
       }
       sql.append(tablename + " set ");
 
-      /* 遍历所有的字段 */
+       遍历所有的字段 
       Field[] fields = stuClass.getDeclaredFields();// 获取类的字段信息
       for (Field field : fields) {
         if (field.isAnnotationPresent(Column.class)) {
@@ -1391,7 +1392,7 @@ public class JdbcHandler {
             // get到field的值
             Method method = stuClass.getMethod(methodName);
             Object fieldValue = method.invoke(annotatedSample);
-            /* 空字段跳过拼接过程。。。 */// 如果没有值，不拼接
+             空字段跳过拼接过程。。。 // 如果没有值，不拼接
             if (fieldValue != null) {
               if(params.size() == 0 ){
                 sql.append(columnName + " = " + " ? ");
@@ -1444,11 +1445,11 @@ public class JdbcHandler {
   
   
 
-  /** ************** "insert, delete , update" end *************** */
+  *//** ************** "insert, delete , update" end *************** *//*
 
   // *********** ***************
 
-  /**
+  *//**
    * 带参数的翻页功能(oracle)
    * 
    * @param sql
@@ -1460,7 +1461,7 @@ public class JdbcHandler {
    * @param size
    *          int
    * @return HashMap[]
-   */
+   *//*
   public HashMap[] queryPageSQL(String dbalias, String sql, int startIndex, int size, Object... paramList) {
     StringBuffer querySQL = new StringBuffer();
     querySQL.append("select * from (select my_table.*,rownum as my_rownum from(").append(sql).append(") my_table where rownum<").append(startIndex + size).append(
@@ -1469,10 +1470,10 @@ public class JdbcHandler {
     return queryForMap(dbalias ,querySQL.toString(), paramList);
   }
 
-  /***
+  *//***
    * 
    * 清空表
-   */
+   *//*
   public boolean truncateTable(String dbalias, String schema, String tablename) {
     Connection connection = this.getConnection(dbalias);
     Statement st = null;
@@ -1492,7 +1493,7 @@ public class JdbcHandler {
 //          sql = "TRUNCATE TABLE " + tablename + " IMMEDIATE" ;  
           sql = "ALTER TABLE " + stabName +  " ACTIVATE NOT LOGGED INITIALLY WITH EMPTY TABLE";
           break;
-        case MYSQL:
+        case MySQL:
           sql = "TRUNCATE TABLE " + stabName  ;
           break;
         default:
@@ -1512,11 +1513,11 @@ public class JdbcHandler {
 
   
 
-  /**
+  *//**
    * 调用存储过程  
    * 
    * out : Types.INTEGER 
-   */
+   *//*
   public List callProcedure(String dbalias, String procedureName, Object[] in , int... outTypes) {
     List result  = new ArrayList();
     StringBuffer sql;
@@ -1586,7 +1587,7 @@ public class JdbcHandler {
     return result ;
   }
 
-  /***
+  *//***
    * 
    * DEL文件入库
    * 
@@ -1598,7 +1599,7 @@ public class JdbcHandler {
    * @param split
    *          字段分隔符
    * 
-   */
+   *//*
   public boolean loadDelFile(String dbalias, String schema, String tablename, String filePath, char split) {
     // 数据库文件 分割符号 0X1D : 29
     // split = new String(new byte[] { 29 });
@@ -1688,7 +1689,7 @@ public class JdbcHandler {
 
   
 
-  /***
+  *//***
    * CSV（默认以逗号分割的） 文件入库    (char)44 
    * @param tablename
    *          入库表名
@@ -1696,12 +1697,12 @@ public class JdbcHandler {
    *          文件路径
    * @param split
    *          字段分隔符
-   */
+   *//*
   public void loadCsvFile(String dbalias, String schema, String tablename, String filepath) {
     this.loadCsvFile(dbalias ,schema,  tablename,  filepath, (char)44 );
   }
   
-  /***
+  *//***
    * CSV（默认以逗号分割的） 文件入库
    * @param tablename
    *          入库表名
@@ -1709,7 +1710,7 @@ public class JdbcHandler {
    *          文件路径
    * @param split
    *          字段分隔符
-   */
+   *//*
   public void loadCsvFile(String dbalias, String schema, String tablename, String filepath, char split) {
     long start = System.currentTimeMillis();
     Connection connection = this.getConnection(dbalias);
@@ -1798,13 +1799,13 @@ public class JdbcHandler {
   }
   
 
-  /**
+  *//**
    * 查询到处数据为 CSV
    * 
    * @param conn
    * @param filePath
    * @param encoding 文件内容编码   对应于  DB2 code page
-   */
+   *//*
   public void exportCSV(String dbalias , String filePath , String encoding, char split, String sql, Object... params) {
     Connection conn = this.getConnection(dbalias);
     PreparedStatement ps = null;
@@ -1898,12 +1899,12 @@ public class JdbcHandler {
     }
   }
   
-  /**
+  *//**
    * 查询到处数据为 CSV
    * 
    * @param conn
    * @param filePath
-   */
+   *//*
   public void exportCSV_BACK(String dbalias, String filePath , char split, String sql, Object... params) {
     Connection conn = this.getConnection(dbalias);
     PreparedStatement ps = null;
@@ -1940,11 +1941,11 @@ public class JdbcHandler {
     }
   }
 
-  /**
+  *//**
    * 读取office 2007 xlsx
    * 
    * @param filePath
-   */
+   *//*
   public void loadExcelFile(String dbalias ,String schema, String tablename, String filePath) {
     long start = System.currentTimeMillis();
     Connection conn = this.getConnection(dbalias);
@@ -2054,12 +2055,12 @@ public class JdbcHandler {
     return this.exportExcel(dbalias, null, sheetTitle, sql, params);
   }
 
-  /**
+  *//**
    * 查询到处数据为Excel
    * 
    * @param conn
    * @param filePath
-   */
+   *//*
   public Workbook exportExcel(String dbalias,Workbook workbook, String sheetTitle, String sql, Object... params) {
     Connection conn = this.getConnection(dbalias);
     PreparedStatement ps = null;
@@ -2165,3 +2166,4 @@ public class JdbcHandler {
   }
 
 }
+*/

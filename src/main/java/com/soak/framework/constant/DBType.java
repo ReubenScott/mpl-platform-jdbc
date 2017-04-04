@@ -29,7 +29,18 @@ public enum DBType {
       return "ORACLE";
     }
   },
-  MYSQL {
+  PostgreSQL {
+	    @Override
+	    public String getName() {
+	      return "PostgreSQL";
+	    }
+
+	    @Override
+	    public String getValue() {
+	      return "PostgreSQL";
+	    }
+  },
+  MySQL {
     @Override
     public String getName() {
       return "MySQL";
