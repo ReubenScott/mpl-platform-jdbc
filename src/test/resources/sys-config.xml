@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"  ?>
+<config>
+
+  <!--数据库相关信息: 1、驱动；2、url；3、user；4、password-->
+  <db-info name="attendance">
+    <alias>attendance</alias>
+    <driverclass>com.mysql.jdbc.Driver</driverclass>
+    <url>
+      jdbc:mysql://localhost:3306/attendance?useUnicode=true&amp;characterEncoding=UTF-8&amp;autoReconnect=true&amp;failOverReadOnly=false&amp;zeroDateTimeBehavior=convertToNull
+    </url>
+    <username>root</username>
+    <password>123456</password>
+  </db-info>
+
+  <!--数据库相关信息 -->
+  <db-info name="dbTest170">
+    <driverclass>com.ibm.db2.jcc.DB2Driver</driverclass>
+    <url>jdbc:db2://32.137.126.170:60000/EDWDB</url>
+    <username>etl</username>
+    <password>etl123</password>
+  </db-info>
+
+  <default>dbTest170</default>
+
+</config> 

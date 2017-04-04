@@ -1,0 +1,164 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<sql>
+
+  <sql-info>
+    <sql-name>每旬理财</sql-name>
+    <sql-value><![CDATA[
+      SELECT  CUSTTP
+           ,COUNT(CASE WHEN APPLAMT <= 500000 THEN IDNO ELSE NULL END)
+           ,SUM(CASE WHEN APPLAMT <= 500000 THEN APPLAMT ELSE 0 END)
+           ,COUNT(CASE WHEN APPLAMT > 500000 THEN IDNO ELSE NULL END)
+           ,SUM(CASE WHEN APPLAMT > 500000 THEN APPLAMT ELSE 0 END)
+      FROM (
+            SELECT CUSTTP,IDNO,SUM(cast(char(APPLAMT) as bigint))/100  AS APPLAMT
+              FROM EDW.F_FIN_SALEINFO
+             WHERE PRODSDATE <= '@date'
+               AND PRODEDATE > '@date'
+               AND REMVFLAG = '0'
+               AND BACKFLAG = '0'
+               AND CUSTSTATE = '1'
+             GROUP BY CUSTTP,IDNO
+           )
+      GROUP BY CUSTTP
+       ]]>
+    </sql-value>
+  </sql-info>
+
+  <sql-info>
+    <sql-name>高管账户余额</sql-name>
+    <sql-value><![CDATA[
+      SELECT  CLTNM          AS 客户名称
+             ,CLTNBR         AS 客户号
+             ,SUM(DEPBAL)         AS 账户余额
+        FROM (
+          SELECT  T1.CARDNBR
+                 ,T1.ACCTNBR
+                 ,T2.SA_CERT_ID
+                 ,T1.CLTNBR
+                 ,T1.CLTNM
+                 ,T1.OPENDATE
+                 ,T1.BRNNBR
+                 ,T1.OPENOPERNO
+                 ,T1.OPENAMT
+                 ,T1.DEPBAL
+            FROM EDW.S_DEP_SA_ACCOUNT_D           T1
+            LEFT JOIN EDW.F_DEP_SAACNACN  T2
+              ON T1.ACCTNBR = T2.SA_ACCT_NO
+           WHERE T1.STATDATE = '@date'
+             AND T2.SA_CERT_ID IN ('320624196510038072'      --身份证
+                ,'432822196602104052'
+                ,'320802197502121519'
+                ,'320520195808022430'
+                ,'320626196312257445'
+                ,'32068119840817009X'
+                ,'32052519570801067X'
+                ,'320525196309075665'
+                ,'320626196711140447'
+                ,'320626196106170031'
+                ,'320626196304134816'
+                ,'320626197409269615'
+                ,'320626197410233214'
+                ,'320626196705054016'
+                ,'320681197701241235'
+                ,'320625197002125197')     
+          
+           UNION ALL
+          SELECT  ''
+                 ,T1.ACCTNBR
+                 ,T2.TD_CERT_ID
+                 ,T1.CLTNBR
+                 ,T1.CLTNM
+                 ,T1.OPENDATE
+                 ,T1.BRNNBR
+                 ,T1.OPENOPERNO
+                 ,T1.OPENAMT
+                 ,T1.DEPBAL
+            FROM EDW.S_DEP_TD_ACCOUNT_D           T1
+            LEFT JOIN EDW.F_DEP_TDACNACN  T2
+              ON T1.ACCTNBR = T2.TD_TD_ACCT_NO
+           WHERE T1.STATDATE = '@date'
+             AND T2.TD_CERT_ID IN ('320624196510038072'      --身份证
+              ,'432822196602104052'
+              ,'320802197502121519'
+              ,'320520195808022430'
+              ,'320626196312257445'
+              ,'32068119840817009X'
+              ,'32052519570801067X'
+              ,'320525196309075665'
+              ,'320626196711140447'
+              ,'320626196106170031'
+              ,'320626196304134816'
+              ,'320626197409269615'
+              ,'320626197410233214'
+              ,'320626196705054016'
+              ,'320681197701241235'
+              ,'320625197002125197')      
+                   )
+             GROUP BY  CLTNBR,CLTNM
+        ]]>
+    </sql-value>
+  </sql-info>
+
+  <sql-info>
+    <sql-name>高管活期积数, 余额</sql-name>
+    <sql-value><![CDATA[
+      SELECT  A.SA_ACCT_NO
+             ,A.SA_CUST_NO
+             ,SUM(CASE WHEN H.ENDDATE<= '@endDate'
+                        AND H.STARTDATE> '@startDate'  THEN (DAYS(DATE(H.ENDDATE))-DAYS(DATE(H.STARTDATE)))*H.DEPBAL
+                       WHEN H.ENDDATE> '@endDate'
+                        AND H.STARTDATE> '@startDate'  THEN (DAYS(DATE('@endDate'))-DAYS(DATE(H.STARTDATE))+1)*H.DEPBAL
+                       WHEN H.ENDDATE> '@endDate'
+                        AND H.STARTDATE<= '@startDate'  THEN (DAYS(DATE('@endDate'))-DAYS(DATE('@startDate')))*H.DEPBAL
+                       WHEN H.ENDDATE<= '@endDate'
+                        AND H.STARTDATE<= '@startDate'  THEN (DAYS(DATE(H.ENDDATE))-DAYS(DATE('@startDate'))-1)*H.DEPBAL
+                       ELSE 0
+                  END) as 活期积数
+               ,SUM(CASE WHEN H.STARTDATE<= '@endDate' and H.ENDDATE> '@endDate' THEN H.DEPBAL ELSE 0 END)  as  活期余额
+        FROM F_DEP_SAACNACN                   A
+       INNER JOIN S_DEP_SA_ACCOUNT_HIS        H
+          ON A.SA_ACCT_NO=H.ACCTNBR
+         AND H.ENDDATE> '@startDate'
+         AND H.STARTDATE<= '@endDate'
+         AND A.SA_CERT_ID IN ('320624196510038072'
+                             ,'432822196602104052'
+                             ,'320802197502121519'
+                             ,'320520195808022430'
+                             ,'320626196312257445'
+                             ,'32068119840817009X'
+                             ,'32052519570801067X'
+                             ,'320525196309075665'
+                             ,'320626196711140447'
+                             ,'320626196106170031'
+                             ,'320626196304134816'
+                             ,'320626197409269615'
+                             ,'320626197410233214'
+                             ,'320626196705054016'
+                             ,'320681197701241235'
+                             ,'320625197002125197')
+       GROUP BY  A.SA_ACCT_NO,A.SA_CUST_NO
+       HAVING SUM(CASE WHEN H.ENDDATE<= '@endDate'
+                        AND H.STARTDATE> '@startDate'  THEN (DAYS(DATE(H.ENDDATE))-DAYS(DATE(H.STARTDATE)))*H.DEPBAL
+                       WHEN H.ENDDATE> '@endDate'
+                        AND H.STARTDATE> '@startDate'  THEN (DAYS(DATE('@endDate'))-DAYS(DATE(H.STARTDATE))+1)*H.DEPBAL
+                       WHEN H.ENDDATE> '@endDate'
+                        AND H.STARTDATE<= '@startDate'  THEN (DAYS(DATE('@endDate'))-DAYS(DATE('@startDate')))*H.DEPBAL
+                       WHEN H.ENDDATE<= '@endDate'
+                        AND H.STARTDATE<= '@startDate'  THEN (DAYS(DATE(H.ENDDATE))-DAYS(DATE('@startDate'))-1)*H.DEPBAL
+                       ELSE 0
+                  END) >0 
+       ORDER BY 3 asc        
+        ]]>
+    </sql-value>
+  </sql-info>
+
+  <sql-info>
+    <sql-name>出货</sql-name>
+    <sql-value><![CDATA[
+
+     ]]>
+    </sql-value>
+  </sql-info>
+
+</sql>

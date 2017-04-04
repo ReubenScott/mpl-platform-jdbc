@@ -1,0 +1,151 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <groupId>com.soak</groupId>
+  <artifactId>framework</artifactId>
+  <version>0.0.1-SNAPSHOT</version>
+
+  <packaging>jar</packaging>
+
+  <parent>
+    <groupId>com.soak</groupId>
+    <artifactId>epl-parent-pom</artifactId>
+    <version>1.0-SNAPSHOT</version>
+    <relativePath>../epl-parent-pom</relativePath>
+  </parent>
+
+
+  <dependencies>
+
+    <!--  本地jar Start -->
+    <dependency>
+      <groupId>db2jcc</groupId>
+      <artifactId>db2jcc</artifactId>
+    </dependency>
+
+    <!-- 汉语拼音工具包   -->
+    <dependency>
+      <groupId>com.belerweb</groupId>
+      <artifactId>pinyin4j</artifactId>
+    </dependency>
+
+    <!-- 判断文件编码格式   -->
+    <dependency>
+      <groupId>cpdetector</groupId>
+      <artifactId>cpdetector</artifactId>
+    </dependency>
+
+    <dependency>
+      <groupId>jargs</groupId>
+      <artifactId>jargs</artifactId>
+    </dependency>
+
+    <!--  本地jar End -->
+
+    <!-- DB Driver Start  -->
+
+    <dependency>
+      <groupId>mysql</groupId>
+      <artifactId>mysql-connector-java</artifactId>
+      <type>jar</type>
+    </dependency>
+
+    <!-- DB Driver End  -->
+
+
+    <!-- Json Start  -->
+    <dependency>
+      <groupId>net.sf.json-lib</groupId>
+      <artifactId>json-lib</artifactId>
+      <classifier>jdk15</classifier>
+    </dependency>
+    <!-- Json End  -->
+
+    <dependency>
+      <groupId>commons-dbcp</groupId>
+      <artifactId>commons-dbcp</artifactId>
+    </dependency>
+
+    <dependency>
+      <groupId>org.apache.commons</groupId>
+      <artifactId>commons-email</artifactId>
+    </dependency>
+
+    <dependency>
+      <groupId>commons-beanutils</groupId>
+      <artifactId>commons-beanutils</artifactId>
+    </dependency>
+
+    <!-- CSV  start  -->
+    <dependency>
+      <groupId>net.sf.opencsv</groupId>
+      <artifactId>opencsv</artifactId>
+    </dependency>
+    <!-- CSV  end  -->
+
+    <!-- 检测文本文件(字节流)的编码方式   start  -->
+    <dependency>
+      <groupId>net.sourceforge.jchardet</groupId>
+      <artifactId>jchardet</artifactId>
+    </dependency>
+
+    <dependency>
+      <groupId>antlr</groupId>
+      <artifactId>antlr</artifactId>
+    </dependency>
+    <!-- 检测文本文件(字节流)的编码方式   end  -->
+
+
+    <!-- ssh ftp   -->
+    <dependency>
+      <groupId>org.apache.camel</groupId>
+      <artifactId>camel-ftp</artifactId>
+    </dependency>
+    <!-- ssh ftp   -->
+    
+    
+    <!-- excel start -->
+    <dependency>
+      <groupId>org.apache.poi</groupId>
+      <artifactId>poi</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.poi</groupId>
+      <artifactId>poi-ooxml</artifactId>
+    </dependency>
+    <!-- excel end -->
+
+
+    <!-- logback+slf4j start -->
+    <dependency>
+      <groupId>org.slf4j</groupId>
+      <artifactId>slf4j-api</artifactId>
+      <type>jar</type>
+    </dependency>
+    <dependency>
+      <groupId>ch.qos.logback</groupId>
+      <artifactId>logback-classic</artifactId>
+      <type>jar</type>
+    </dependency>
+    <dependency>
+      <groupId>org.codehaus.janino</groupId>
+      <artifactId>janino</artifactId>
+    </dependency>
+    <!-- logback+slf4j  end  -->
+    
+    <!-- 公式运算  -->
+    <dependency>
+      <groupId>commons-jexl</groupId>
+      <artifactId>commons-jexl</artifactId>
+    </dependency>
+    
+
+    <dependency>
+      <groupId>junit</groupId>
+      <artifactId>junit</artifactId>
+    </dependency>
+  </dependencies>
+
+
+</project>
