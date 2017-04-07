@@ -291,7 +291,7 @@ public abstract class JdbcTemplate extends ObjectPooling<Connection> {
           e.printStackTrace();
         }
       }
-      
+
     }
   }
 
@@ -391,6 +391,168 @@ public abstract class JdbcTemplate extends ObjectPooling<Connection> {
    * 清空表
    */
   public abstract boolean truncateTable(String schema, String tablename);
+
+  /***
+   * 判断数据库 表 是否存在
+   * 
+   * @param schema
+   * @param tableName
+   * @return
+   */
+  public boolean isTableExits(String schema, String tableName) {
+    boolean flag = false;
+    schema = StringUtil.isEmpty(schema) ? null : schema.toUpperCase();
+    Connection connection = checkOut();
+    DatabaseMetaData meta;
+    ResultSet rs = null;
+    try {
+      meta = connection.getMetaData();
+      switch (this.getDBProductType()) {
+        case DB2:
+          rs = meta.getTables(null, schema, tableName.toUpperCase(), new String[] { "TABLE" });
+          break;
+        case MySQL:
+          rs = meta.getTables(schema, null, tableName.toUpperCase(), new String[] { "TABLE" });
+          break;
+        default:
+          // TODO
+          // schema = conn.getCatalog();
+          break;
+      }
+
+      if (rs != null) {
+        flag = rs.next();
+        rs.close();
+      }
+    } catch (SQLException e) {
+      e.printStackTrace();
+    } finally {
+      this.release(connection, null, rs);
+    }
+
+    return flag;
+  }
+
+  /**
+   * 删除表
+   * 
+   * @param schema
+   * @param tableName
+   * @return
+   */
+  public boolean dropTable(String schema, String tableName) {
+    schema = StringUtil.isEmpty(schema) ? null : schema.toUpperCase();
+    if (isTableExits(schema, tableName)) {
+      this.truncateTable(schema, tableName);
+      if (StringUtil.isEmpty(schema)) {
+        this.execute("Drop table " + tableName);
+      } else {
+        this.execute("Drop table " + schema + "." + tableName);
+      }
+    }
+    return !isTableExits(schema, tableName);
+  }
+
+  /**
+   * 
+   * 根据实例更新
+   * 
+   */
+  public boolean updateAnnotatedEntity(Object annotatedSample, List<Restrictions> restrictions) {
+    return updateAnnotatedEntity(annotatedSample, restrictions.toArray(new Restrictions[restrictions.size()]));
+  }
+
+  /**
+   * 
+   * 根据实例更新
+   * 
+   */
+  public boolean updateAnnotatedEntity(Object annotatedSample, Restrictions... restrictions) {
+    boolean result = false;
+    List<String> fieldNames = new ArrayList<String>();
+    List<Object> params = new ArrayList<Object>();
+    String schema = null;
+    String tablename = null;
+    StringBuffer sql = new StringBuffer("update ");
+
+    // 获取类的class
+    Class<? extends Object> stuClass = annotatedSample.getClass();
+
+    // 通过获取类的类注解，来获取类映射的表名称
+    if (stuClass.isAnnotationPresent(Table.class)) { // 如果类映射了表
+      Table table = (Table) stuClass.getAnnotation(Table.class);
+      schema = table.schema();
+      tablename = table.name();
+
+      if (!StringUtil.isEmpty(schema)) {
+        sql.append(schema + ".");
+      }
+      sql.append(tablename + " set ");
+
+      // 遍历所有的字段
+      Field[] fields = stuClass.getDeclaredFields();// 获取类的字段信息
+      for (Field field : fields) {
+        if (field.isAnnotationPresent(Column.class)) {
+          Column col = field.getAnnotation(Column.class); // 获取列注解
+          String columnName = col.name(); // 数据库映射字段
+          String fieldName = field.getName(); // 获取字段名称
+          fieldNames.add(fieldName);
+          String methodName = "get" + fieldName.substring(0, 1).toUpperCase() + fieldName.substring(1);// 获取字段的get方法
+
+          try {
+            // get到field的值
+            Method method = stuClass.getMethod(methodName);
+            Object fieldValue = method.invoke(annotatedSample);
+            // 空字段跳过拼接过程。。。 // 如果没有值，不拼接
+            if (fieldValue != null) {
+              if (params.size() == 0) {
+                sql.append(columnName + " = " + " ? ");
+              } else {
+                sql.append(", " + columnName + " = " + " ? ");
+              }
+              params.add(fieldValue);
+            }
+          } catch (SecurityException e) {
+            e.printStackTrace();
+          } catch (NoSuchMethodException e) {
+            e.printStackTrace();
+          } catch (IllegalArgumentException e) {
+            e.printStackTrace();
+          } catch (IllegalAccessException e) {
+            e.printStackTrace();
+          } catch (InvocationTargetException e) {
+            e.printStackTrace();
+          }
+
+        }
+      }
+    }
+
+    // 条件
+    StringBuilder condition = new StringBuilder(" where 1=1 ");
+    for (Restrictions term : restrictions) {
+      condition.append(term.getSql());
+      params.addAll(term.getParams());
+    }
+    sql.append(condition);
+
+    logger.debug(sql.toString().replace("?", "?[{}]"), params.toArray());
+
+    Connection conn = checkOut(); // this.getConnection(dbalias);
+    PreparedStatement ps = null;
+    try {
+      ps = conn.prepareStatement(sql.toString());
+      this.setPreparedValues(ps, params);
+      ps.execute();
+      result = true;
+    } catch (SQLException e) {
+      e.printStackTrace();
+    } finally {
+      this.release(conn, ps, null);
+    }
+
+    return result;
+  }
 
   /**
    * 通过实体类生成 删除 语句
@@ -722,215 +884,6 @@ public abstract class JdbcTemplate extends ObjectPooling<Connection> {
   }
 
   /**
-   * 
-   * sql 中 AS
-   * 
-   * 返回 封装 集合
-   */
-  public <T> List<T> querySampleList(Class<T> sample, String sql, Object... params) {
-    Connection conn = checkOut();
-    ResultSetMetaData rsmdt = null;
-    PreparedStatement ps = null;
-    ResultSet rs = null;
-    List<T> list = new ArrayList<T>();
-    try {
-      conn.setReadOnly(true);
-      ps = conn.prepareStatement(sql);
-      this.setPreparedValues(ps, params);
-      rs = ps.executeQuery();
-      rsmdt = rs.getMetaData();
-      while (rs.next()) {
-        Map<String, Object> map = new HashMap<String, Object>();
-        for (int i = 1; i <= rsmdt.getColumnCount(); i++) {
-          map.put(rsmdt.getColumnLabel(i), rs.getObject(i)); // 别称 sql 中 AS 后面的
-        }
-        list.add((T) BeanUtil.autoPackageBean(sample, map));
-      }
-    } catch (SQLException e) {
-      e.printStackTrace();
-      try {
-        conn.rollback();
-      } catch (SQLException ex) {
-        ex.printStackTrace();
-      }
-    } finally {
-      this.release(conn, ps, rs);
-    }
-    return list;
-  }
-
-  /**
-   * 查询
-   * 
-   * @param sql
-   * @return
-   */
-  public List<List> queryForList(String sql, Object... params) {
-    Connection conn = checkOut();
-    PreparedStatement ps = null;
-    ResultSet rs = null;
-    List<List> result = new ArrayList<List>();
-    try {
-      conn.setReadOnly(true);
-      ps = conn.prepareStatement(sql);
-      this.setPreparedValues(ps, params);
-      rs = ps.executeQuery();
-      ResultSetMetaData rsmd = rs.getMetaData();
-      while (rs.next()) {
-        List row = new ArrayList();
-        for (int i = 1; i <= rsmd.getColumnCount(); i++) {
-          row.add(rs.getObject(i));
-        }
-        result.add(row);
-      }
-    } catch (SQLException e) {
-      e.printStackTrace();
-    } finally {
-      this.release(conn, ps, rs);
-    }
-    return result;
-  }
-
-  /**
-   * 根据模板查询 queryBySample
-   * 
-   */
-  public <T> List<T> findByAnnotatedSample(T annotatedSample, Restrictions... restrictions) {
-    List<String> columns = new ArrayList<String>();
-    List<String> fieldNames = new ArrayList<String>();
-    List<Object> params = new ArrayList<Object>();
-    StringBuilder condition = new StringBuilder(" where 1=1 ");
-    String schema = null;
-    String tablename = null;
-
-    // 获取类的class
-    Class<? extends Object> stuClass = annotatedSample.getClass();
-
-    /* 通过获取类的类注解，来获取类映射的表名称 */
-    if (stuClass.isAnnotationPresent(Table.class)) { // 如果类映射了表
-      Table table = (Table) stuClass.getAnnotation(Table.class);
-      // sb.append(table.name() + " where 1=1 "); // 加入表名称
-      schema = table.schema();
-      tablename = table.name();
-
-      /* 遍历所有的字段 */
-      Field[] fields = stuClass.getDeclaredFields();// 获取类的字段信息
-      for (Field field : fields) {
-        if (field.isAnnotationPresent(Column.class)) {
-          Column col = field.getAnnotation(Column.class); // 获取列注解
-          String columnName = col.name(); // 数据库映射字段
-          columns.add(columnName);
-          String fieldName = field.getName(); // 获取字段名称
-          fieldNames.add(fieldName);
-          String methodName = "get" + fieldName.substring(0, 1).toUpperCase() + fieldName.substring(1);// 获取字段的get方法
-
-          try {
-            // get到field的值
-            Method method = stuClass.getMethod(methodName);
-            Object fieldValue = method.invoke(annotatedSample);
-            /* 空字段跳过拼接过程。。。 */// 如果没有值，不拼接
-            if (fieldValue != null) {
-              condition.append(" and " + columnName + "=" + "?");
-              params.add(fieldValue);
-            }
-          } catch (SecurityException e) {
-            e.printStackTrace();
-          } catch (NoSuchMethodException e) {
-            e.printStackTrace();
-          } catch (IllegalArgumentException e) {
-            e.printStackTrace();
-          } catch (IllegalAccessException e) {
-            e.printStackTrace();
-          } catch (InvocationTargetException e) {
-            e.printStackTrace();
-          }
-
-        }
-      }
-    }
-
-    // 附加条件
-    for (Restrictions term : restrictions) {
-      condition.append(term.getSql());
-      params.addAll(term.getParams());
-    }
-
-    String sql = "select " + StringUtil.arrayToString(columns) + " from ";
-    if (!StringUtil.isEmpty(schema)) {
-      sql += schema + ".";
-    }
-
-    sql += tablename + condition;
-    logger.debug(sql.replace("?", "?[{}]"), params.toArray());
-
-    Connection conn = checkOut();
-    PreparedStatement ps = null;
-    ResultSet rs = null;
-    List<T> result = new ArrayList<T>();
-    try {
-      conn.setReadOnly(true);
-      ps = conn.prepareStatement(sql);
-      this.setPreparedValues(ps, params);
-      rs = ps.executeQuery();
-      ResultSetMetaData rsmd = rs.getMetaData();
-      while (rs.next()) {
-        Map<String, Object> map = new HashMap<String, Object>();
-        for (int i = 1; i <= rsmd.getColumnCount(); i++) {
-          map.put(fieldNames.get(i - 1), rs.getObject(i));
-        }
-        T obj = (T) BeanUtil.autoPackageBean(stuClass, map);
-        result.add(obj);
-      }
-    } catch (SQLException e) {
-      e.printStackTrace();
-    } finally {
-      this.release(conn, ps, rs);
-    }
-
-    return result;
-  }
-
-  /**
-   * 查询一条记录
-   * 
-   * @param sql
-   *          String
-   * @param paramList
-   *          ArrayList
-   * @return HashMap
-   */
-  public HashMap queryOneAsMap(String sql, Object... params) {
-    Connection conn = checkOut();
-    PreparedStatement ps = null;
-    ResultSet rs = null;
-    HashMap hashRow = null;
-    try {
-      conn.setReadOnly(true);
-      ps = conn.prepareStatement(sql);
-      this.setPreparedValues(ps, params);
-      rs = ps.executeQuery();
-      ResultSetMetaData dbRsMd = rs.getMetaData();
-      String[] colNames = new String[dbRsMd.getColumnCount()];
-      for (int i = 1; i <= dbRsMd.getColumnCount(); i++) {
-        colNames[i - 1] = dbRsMd.getColumnLabel(i); // 获取SQL 字段 别名 对比
-                                                    // getColumnName
-      }
-      while (rs.next()) {
-        hashRow = new HashMap();
-        for (int i = 0; i < colNames.length; i++) {
-          hashRow.put(colNames[i], rs.getObject(colNames[i]));
-        }
-      }
-      return hashRow;
-    } catch (SQLException e) {
-      logger.info(e.getMessage());
-      return null;
-    } finally {
-      this.release(conn, ps, rs);
-    }
-  }
-
-  /**
    * 调用存储过程
    * 
    * out : Types.INTEGER
@@ -1194,6 +1147,318 @@ public abstract class JdbcTemplate extends ObjectPooling<Connection> {
     return Types.BIT == sqlType || Types.BIGINT == sqlType || Types.DECIMAL == sqlType || Types.DOUBLE == sqlType || Types.FLOAT == sqlType || Types.INTEGER == sqlType
         || Types.NUMERIC == sqlType || Types.REAL == sqlType || Types.SMALLINT == sqlType || Types.TINYINT == sqlType;
   }
+
+  /************************************************************ "select" start ************************************************************/
+
+  /**
+   * 
+   * sql 中 AS
+   * 
+   * 返回 封装 集合
+   */
+  public <T> List<T> querySampleList(Class<T> sample, String sql, Object... params) {
+    Connection conn = checkOut();
+    ResultSetMetaData rsmdt = null;
+    PreparedStatement ps = null;
+    ResultSet rs = null;
+    List<T> list = new ArrayList<T>();
+    try {
+      conn.setReadOnly(true);
+      ps = conn.prepareStatement(sql);
+      this.setPreparedValues(ps, params);
+      rs = ps.executeQuery();
+      rsmdt = rs.getMetaData();
+      while (rs.next()) {
+        Map<String, Object> map = new HashMap<String, Object>();
+        for (int i = 1; i <= rsmdt.getColumnCount(); i++) {
+          map.put(rsmdt.getColumnLabel(i), rs.getObject(i)); // 别称 sql 中 AS 后面的
+        }
+        list.add((T) BeanUtil.autoPackageBean(sample, map));
+      }
+    } catch (SQLException e) {
+      e.printStackTrace();
+      try {
+        conn.rollback();
+      } catch (SQLException ex) {
+        ex.printStackTrace();
+      }
+    } finally {
+      this.release(conn, ps, rs);
+    }
+    return list;
+  }
+
+  /**
+   * 查询
+   * 
+   * @param sql
+   * @return
+   */
+  public List<List> queryForList(String sql, Object... params) {
+    Connection conn = checkOut();
+    PreparedStatement ps = null;
+    ResultSet rs = null;
+    List<List> result = new ArrayList<List>();
+    try {
+      conn.setReadOnly(true);
+      ps = conn.prepareStatement(sql);
+      this.setPreparedValues(ps, params);
+      rs = ps.executeQuery();
+      ResultSetMetaData rsmd = rs.getMetaData();
+      while (rs.next()) {
+        List row = new ArrayList();
+        for (int i = 1; i <= rsmd.getColumnCount(); i++) {
+          row.add(rs.getObject(i));
+        }
+        result.add(row);
+      }
+    } catch (SQLException e) {
+      e.printStackTrace();
+    } finally {
+      this.release(conn, ps, rs);
+    }
+    return result;
+  }
+
+  /**
+   * 根据模板查询 queryBySample
+   * 
+   */
+  public <T> T findOneByAnnotatedSample(String dbalias, T annotatedSample, Restrictions... restrictions) {
+    List<String> columns = new ArrayList<String>();
+    List<String> fieldNames = new ArrayList<String>();
+    List<Object> params = new ArrayList<Object>();
+    StringBuilder condition = new StringBuilder(" where 1=1 ");
+    String schema = null;
+    String tablename = null;
+
+    // 获取类的class
+    Class<? extends Object> stuClass = annotatedSample.getClass();
+
+    // 通过获取类的类注解，来获取类映射的表名称
+    if (stuClass.isAnnotationPresent(Table.class)) { // 如果类映射了表
+      Table table = (Table) stuClass.getAnnotation(Table.class);
+      // sb.append(table.name() + " where 1=1 "); // 加入表名称
+      schema = table.schema();
+      tablename = table.name();
+
+      // 遍历所有的字段
+      Field[] fields = stuClass.getDeclaredFields();// 获取类的字段信息
+      for (Field field : fields) {
+        if (field.isAnnotationPresent(Column.class)) {
+          Column col = field.getAnnotation(Column.class); // 获取列注解
+          String columnName = col.name(); // 数据库映射字段
+          columns.add(columnName);
+          String fieldName = field.getName(); // 获取字段名称
+          fieldNames.add(fieldName);
+          String methodName = "get" + fieldName.substring(0, 1).toUpperCase() + fieldName.substring(1);// 获取字段的get方法
+
+          try {
+            // get到field的值
+            Method method = stuClass.getMethod(methodName);
+            Object fieldValue = method.invoke(annotatedSample);
+            // 空字段跳过拼接过程。。。 // 如果没有值，不拼接
+            if (fieldValue != null) {
+              condition.append(" and " + columnName + "=" + "?");
+              params.add(fieldValue);
+            }
+          } catch (SecurityException e) {
+            e.printStackTrace();
+          } catch (NoSuchMethodException e) {
+            e.printStackTrace();
+          } catch (IllegalArgumentException e) {
+            e.printStackTrace();
+          } catch (IllegalAccessException e) {
+            e.printStackTrace();
+          } catch (InvocationTargetException e) {
+            e.printStackTrace();
+          }
+
+        }
+      }
+    }
+
+    // 附加条件
+    for (Restrictions term : restrictions) {
+      condition.append(term.getSql());
+      params.addAll(term.getParams());
+    }
+
+    String sql = "select " + StringUtil.arrayToString(columns) + " from ";
+    if (!StringUtil.isEmpty(schema)) {
+      sql += schema + ".";
+    }
+
+    sql += tablename + condition;
+    logger.debug(sql);
+
+    Connection conn = checkOut(); // this.getConnection(dbalias);
+    PreparedStatement ps = null;
+    ResultSet rs = null;
+    T obj = null;
+    try {
+      conn.setReadOnly(true);
+      ps = conn.prepareStatement(sql);
+      this.setPreparedValues(ps, params);
+      rs = ps.executeQuery();
+      ResultSetMetaData rsmd = rs.getMetaData();
+      while (rs.next()) {
+        Map<String, Object> map = new HashMap<String, Object>();
+        for (int i = 1; i <= rsmd.getColumnCount(); i++) {
+          map.put(fieldNames.get(i - 1), rs.getObject(i));
+        }
+        obj = (T) BeanUtil.autoPackageBean(stuClass, map);
+        break;
+      }
+    } catch (SQLException e) {
+      e.printStackTrace();
+    } finally {
+      this.release(conn, ps, rs);
+    }
+
+    return obj;
+  }
+
+  /**
+   * 根据模板查询 queryBySample
+   * 
+   */
+  public <T> List<T> findByAnnotatedSample(T annotatedSample, Restrictions... restrictions) {
+    List<String> columns = new ArrayList<String>();
+    List<String> fieldNames = new ArrayList<String>();
+    List<Object> params = new ArrayList<Object>();
+    StringBuilder condition = new StringBuilder(" where 1=1 ");
+    String schema = null;
+    String tablename = null;
+
+    // 获取类的class
+    Class<? extends Object> stuClass = annotatedSample.getClass();
+
+    /* 通过获取类的类注解，来获取类映射的表名称 */
+    if (stuClass.isAnnotationPresent(Table.class)) { // 如果类映射了表
+      Table table = (Table) stuClass.getAnnotation(Table.class);
+      // sb.append(table.name() + " where 1=1 "); // 加入表名称
+      schema = table.schema();
+      tablename = table.name();
+
+      /* 遍历所有的字段 */
+      Field[] fields = stuClass.getDeclaredFields();// 获取类的字段信息
+      for (Field field : fields) {
+        if (field.isAnnotationPresent(Column.class)) {
+          Column col = field.getAnnotation(Column.class); // 获取列注解
+          String columnName = col.name(); // 数据库映射字段
+          columns.add(columnName);
+          String fieldName = field.getName(); // 获取字段名称
+          fieldNames.add(fieldName);
+          String methodName = "get" + fieldName.substring(0, 1).toUpperCase() + fieldName.substring(1);// 获取字段的get方法
+
+          try {
+            // get到field的值
+            Method method = stuClass.getMethod(methodName);
+            Object fieldValue = method.invoke(annotatedSample);
+            /* 空字段跳过拼接过程。。。 */// 如果没有值，不拼接
+            if (fieldValue != null) {
+              condition.append(" and " + columnName + "=" + "?");
+              params.add(fieldValue);
+            }
+          } catch (SecurityException e) {
+            e.printStackTrace();
+          } catch (NoSuchMethodException e) {
+            e.printStackTrace();
+          } catch (IllegalArgumentException e) {
+            e.printStackTrace();
+          } catch (IllegalAccessException e) {
+            e.printStackTrace();
+          } catch (InvocationTargetException e) {
+            e.printStackTrace();
+          }
+
+        }
+      }
+    }
+
+    // 附加条件
+    for (Restrictions term : restrictions) {
+      condition.append(term.getSql());
+      params.addAll(term.getParams());
+    }
+
+    String sql = "select " + StringUtil.arrayToString(columns) + " from ";
+    if (!StringUtil.isEmpty(schema)) {
+      sql += schema + ".";
+    }
+
+    sql += tablename + condition;
+    logger.debug(sql.replace("?", "?[{}]"), params.toArray());
+
+    Connection conn = checkOut();
+    PreparedStatement ps = null;
+    ResultSet rs = null;
+    List<T> result = new ArrayList<T>();
+    try {
+      conn.setReadOnly(true);
+      ps = conn.prepareStatement(sql);
+      this.setPreparedValues(ps, params);
+      rs = ps.executeQuery();
+      ResultSetMetaData rsmd = rs.getMetaData();
+      while (rs.next()) {
+        Map<String, Object> map = new HashMap<String, Object>();
+        for (int i = 1; i <= rsmd.getColumnCount(); i++) {
+          map.put(fieldNames.get(i - 1), rs.getObject(i));
+        }
+        T obj = (T) BeanUtil.autoPackageBean(stuClass, map);
+        result.add(obj);
+      }
+    } catch (SQLException e) {
+      e.printStackTrace();
+    } finally {
+      this.release(conn, ps, rs);
+    }
+
+    return result;
+  }
+
+  /**
+   * 查询一条记录
+   * 
+   * @param sql
+   *          String
+   * @param paramList
+   *          ArrayList
+   * @return HashMap
+   */
+  public HashMap queryOneAsMap(String sql, Object... params) {
+    Connection conn = checkOut();
+    PreparedStatement ps = null;
+    ResultSet rs = null;
+    HashMap hashRow = null;
+    try {
+      conn.setReadOnly(true);
+      ps = conn.prepareStatement(sql);
+      this.setPreparedValues(ps, params);
+      rs = ps.executeQuery();
+      ResultSetMetaData dbRsMd = rs.getMetaData();
+      String[] colNames = new String[dbRsMd.getColumnCount()];
+      for (int i = 1; i <= dbRsMd.getColumnCount(); i++) {
+        colNames[i - 1] = dbRsMd.getColumnLabel(i); // 获取SQL 字段 别名 对比
+        // getColumnName
+      }
+      while (rs.next()) {
+        hashRow = new HashMap();
+        for (int i = 0; i < colNames.length; i++) {
+          hashRow.put(colNames[i], rs.getObject(colNames[i]));
+        }
+      }
+      return hashRow;
+    } catch (SQLException e) {
+      logger.info(e.getMessage());
+      return null;
+    } finally {
+      this.release(conn, ps, rs);
+    }
+  }
+
+  /************************************************************ "select" end ************************************************************/
 
   /**
    * 查询到处数据为Excel
@@ -1561,6 +1826,107 @@ public abstract class JdbcTemplate extends ObjectPooling<Connection> {
       this.release(conn, ps, null);
     }
 
+  }
+
+  /***
+   * 
+   * DEL文件入库
+   * 
+   * @param sql
+   * 
+   * @param filePath
+   *          DEL 文件路径
+   * 
+   * @param split
+   *          字段分隔符
+   * 
+   */
+  public boolean loadDelFile(String schema, String tablename, String filePath, char split) {
+    // 数据库文件 分割符号 0X1D : 29
+    // split = new String(new byte[] { 29 });
+    long start = System.currentTimeMillis();
+    Connection connection = this.checkOut();
+    PreparedStatement ps = null;
+    BufferedReader reader = null;
+
+    boolean flag = false;
+    int loadCount = 0; // 批量计数
+    try {
+      String encode = IOHandler.getCharSetEncoding(filePath); // TODO 不靠谱
+      reader = new BufferedReader(new InputStreamReader(new FileInputStream(filePath), encode));
+      // 获取字段类型
+      List<Integer> columnTypes = this.getColumnTypes(connection, schema, tablename);
+      int cloumnCount = columnTypes.size(); // 表 字段数
+      // 根据表名 生成 Insert语句
+      // "insert into CBOD_ECCMRAMR values (?, ?, ?, ?, ?, ?, ?,?, ?, ?, ?, ?, ?, ?,?,?,?)"
+      StringBuffer sql;
+      if (schema == null || "".equals(schema.trim())) {
+        sql = new StringBuffer("insert into " + tablename + " values (");
+      } else {
+        sql = new StringBuffer("insert into " + schema.trim() + "." + tablename + " values (");
+      }
+      for (int i = 1; i < cloumnCount; i++) {
+        sql.append("?,");
+      }
+      sql.append("?)");
+
+      logger.debug(sql.toString());
+
+      ps = connection.prepareStatement(sql.toString());
+      connection.setAutoCommit(false);
+
+      String line;
+      while ((line = reader.readLine()) != null) {
+        String[] lineData = line.split(String.valueOf(split));
+        int dataNum = lineData.length; // 数据文件 字段数
+        for (int i = 0; i < cloumnCount; i++) {
+          try {
+            if (i + 1 > dataNum) {
+              ps.setObject(i + 1, null);
+            } else {
+              ps.setObject(i + 1, this.castDBType(columnTypes.get(i), lineData[i]));
+            }
+          } catch (Exception e) {
+            logger.error(columnTypes.get(i) + " :  " + lineData[i]);
+            e.printStackTrace();
+          }
+        }
+        ps.addBatch();
+        // 1w条记录插入一次
+        if (++loadCount % BATCHCOUNT == 0) {
+          ps.executeBatch();
+          connection.commit();
+        }
+      }
+      // 最后插入不足1w条的数据
+      ps.executeBatch();
+      connection.commit();
+      connection.setAutoCommit(true);
+      flag = true;
+      long end = System.currentTimeMillis();
+      logger.debug("load into [" + schema + "." + tablename + "] Total : [" + loadCount + "] records, Take [" + (float) (end - start) / 1000 + "] seconds . Average : " + 1000
+          * loadCount / (end - start) + " records/second");
+    } catch (UnsupportedEncodingException e) {
+      e.printStackTrace();
+    } catch (FileNotFoundException e) {
+      e.printStackTrace();
+    } catch (IOException e) {
+      e.printStackTrace();
+    } catch (SQLException e) {
+      e.printStackTrace();
+      e.getNextException().printStackTrace();
+      logger.error(e.getMessage());
+    } finally {
+      try {
+        this.release(connection, ps, null);
+        if (reader != null) {
+          reader.close();
+        }
+      } catch (IOException e) {
+        e.printStackTrace();
+      }
+    }
+    return flag;
   }
 
   /***
