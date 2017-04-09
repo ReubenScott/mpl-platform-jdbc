@@ -11,7 +11,7 @@ import java.util.List;
 import org.junit.Before;
 import org.junit.Test;
 
-import com.soak.framework.jdbc.core.JdbcTemplate;
+import com.soak.jdbcframe.jdbc.core.JdbcTemplate;
 
 public class JdbcTemplateTest {
 

@@ -1,6 +1,6 @@
 package com.soak.framework.jdbc;
 
-import com.soak.framework.jdbc.core.SimpleJdbcTemplate;
+import com.soak.jdbcframe.jdbc.core.SimpleJdbcTemplate;
 
 /**
  * <p>

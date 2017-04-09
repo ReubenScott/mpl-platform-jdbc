@@ -6,9 +6,9 @@ import java.sql.Types;
 
 import junit.framework.TestCase;
 
-import com.soak.framework.jdbc.core.ProcedureCallBack;
-import com.soak.framework.jdbc.core.ProcedureResult;
-import com.soak.framework.jdbc.core.SimpleJdbcTemplate;
+import com.soak.jdbcframe.jdbc.core.ProcedureCallBack;
+import com.soak.jdbcframe.jdbc.core.ProcedureResult;
+import com.soak.jdbcframe.jdbc.core.SimpleJdbcTemplate;
 
 /**
  * <p>

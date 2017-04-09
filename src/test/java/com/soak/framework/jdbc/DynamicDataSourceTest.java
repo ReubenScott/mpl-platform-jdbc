@@ -4,7 +4,7 @@ package com.soak.framework.jdbc;
 import org.junit.Before;
 import org.junit.Test;
 
-import com.soak.framework.jdbc.datasource.DynamicDataSource;
+import com.soak.jdbcframe.jdbc.datasource.DynamicDataSource;
 
 
 public class DynamicDataSourceTest {

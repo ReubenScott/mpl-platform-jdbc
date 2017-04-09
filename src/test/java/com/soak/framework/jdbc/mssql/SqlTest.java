@@ -7,7 +7,7 @@ import java.util.List;
 import junit.framework.TestCase;
 
 import com.soak.framework.jdbc.TestUtil;
-import com.soak.framework.jdbc.core.RowMapper;
+import com.soak.jdbcframe.jdbc.core.RowMapper;
 
 /**
  * <p>

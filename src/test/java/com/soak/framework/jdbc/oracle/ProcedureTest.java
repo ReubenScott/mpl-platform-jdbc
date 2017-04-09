@@ -2,7 +2,7 @@ package com.soak.framework.jdbc.oracle;
 
 import com.soak.framework.jdbc.CommonProcedureTest;
 import com.soak.framework.jdbc.TestUtil;
-import com.soak.framework.jdbc.core.SimpleJdbcTemplate;
+import com.soak.jdbcframe.jdbc.core.SimpleJdbcTemplate;
 
 /**
  * <p>
