@@ -1,4 +1,4 @@
-package com.soak.jdbcframe.jdbc;
+package com.soak.jdbcframe.jdbc.datasource;
 
 import java.io.InputStream;
 import java.io.OutputStream;

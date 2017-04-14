@@ -34,6 +34,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
+import java.util.Vector;
 
 import org.apache.poi.hssf.usermodel.HSSFDataFormat;
 import org.apache.poi.openxml4j.exceptions.InvalidFormatException;
@@ -61,7 +62,6 @@ import com.soak.common.util.BeanUtil;
 import com.soak.common.util.StringUtil;
 import com.soak.jdbcframe.jdbc.Restrictions;
 import com.soak.jdbcframe.jdbc.context.DBParameter;
-import com.soak.jdbcframe.jdbc.pool.ObjectPooling;
 import com.soak.jdbcframe.orm.Column;
 import com.soak.jdbcframe.orm.Table;
 
@@ -72,7 +72,7 @@ import org.apache.commons.dbcp.BasicDataSource;
  * Jdbc 模版
  * 
  */
-public abstract class JdbcTemplate extends ObjectPooling<Connection> {
+public abstract class JdbcTemplate  {
   protected static final Logger logger = LoggerFactory.getLogger(JdbcTemplate.class);
 
   private volatile static JdbcTemplate instance;
@@ -84,7 +84,7 @@ public abstract class JdbcTemplate extends ObjectPooling<Connection> {
   protected final int BATCHCOUNT = 5000; // 批量提交记录数
 
   static {
-    // map.put("www.ibm.com", SpiderForIBM.class);
+    mapper.put("DB2", DB2Template.class);   // DB2/LINUXX8664
     mapper.put("PostgreSQL", PostgreSQLTemplate.class);
   }
 
@@ -121,7 +121,8 @@ public abstract class JdbcTemplate extends ObjectPooling<Connection> {
 
         DatabaseMetaData metaData = connection.getMetaData();
         productName = metaData.getDatabaseProductName();
-        instance = mapper.get(productName).newInstance(); // 创建对象
+        DateBaseType dbType = DateBaseType.getDateBaseType(productName);
+        instance = mapper.get(dbType.getValue()).newInstance(); // 创建对象
       } catch (Exception e) {
         e.printStackTrace();
         throw new RuntimeException("无法创建【" + productName + "】对应的JDBC模版");
@@ -143,44 +144,20 @@ public abstract class JdbcTemplate extends ObjectPooling<Connection> {
    * 
    * @return
    */
-  private Connection getConnection() {
+  protected Connection getConnection() {
     Connection connection = null;
     try {
       connection = dataSource.getConnection();
-    } catch (SQLException e) {
-      e.printStackTrace();
-    }
-    return connection;
-  }
-
-  /**
-   * 创建数据库连接
-   */
-  @Override
-  public Connection create() {
-    Connection connection = null;
-    try {
-      connection = DriverManager.getConnection(dbParameter.getUrl(), dbParameter.getUsername(), dbParameter.getPassword());
+//      connection.setCatalog(catalog)
     } catch (SQLException e) {
       e.printStackTrace();
     } finally {
-      checkIn(connection);
+//      checkIn(connection);
     }
 
     return connection;
   }
 
-  /**
-   * 关闭数据库连接
-   */
-  @Override
-  public void expire(Connection objPool) {
-    try {
-      objPool.close();
-    } catch (SQLException e) {
-      e.printStackTrace();
-    }
-  }
 
   /**
    * 获取数据库 类型
@@ -280,6 +257,7 @@ public abstract class JdbcTemplate extends ObjectPooling<Connection> {
       }
       if (connection != null) {
         connection.close();
+        connection = null;
       }
     } catch (SQLException e) {
       logger.info(e.getSQLState());
@@ -294,6 +272,7 @@ public abstract class JdbcTemplate extends ObjectPooling<Connection> {
 
     }
   }
+  
 
   /**
    * 设置参数
@@ -301,7 +280,7 @@ public abstract class JdbcTemplate extends ObjectPooling<Connection> {
    * @param ps
    * @param params
    */
-  protected void setPreparedValues(PreparedStatement ps, Object... params) {
+  protected void setPreparedValues(PreparedStatement ps, Object[] params) {
     try {
       if (params != null && params.length > 0) {
         for (int i = 0; i < params.length; i++) {
@@ -313,6 +292,25 @@ public abstract class JdbcTemplate extends ObjectPooling<Connection> {
     }
   }
 
+  /**
+   * 设置参数
+   * 
+   * @param ps
+   * @param params
+   */
+  protected void setPreparedValues(PreparedStatement ps, List<Object> params) {
+    try {
+      if (params != null && params.size() > 0) {
+        for (int i = 0; i < params.size(); i++) {
+          ps.setObject(i + 1, params.get(i));
+        }
+      }
+    } catch (SQLException e) {
+      e.printStackTrace();
+    }
+  }
+
+  
   /**
    * 根据数据库 字段类型 返回值
    * 
@@ -341,7 +339,7 @@ public abstract class JdbcTemplate extends ObjectPooling<Connection> {
           result = 0;
         } else {
           double d = Double.valueOf(value.trim()).doubleValue();
-          result = new DecimalFormat("#").format(d);
+          result = new Long(new DecimalFormat("#").format(d));
         }
         break;
       case Types.DOUBLE:
@@ -354,6 +352,7 @@ public abstract class JdbcTemplate extends ObjectPooling<Connection> {
           result = Double.valueOf(value);
         }
         break;
+      case Types.NUMERIC:
       case Types.DECIMAL:
         value = value.trim();
         result = new BigDecimal(value.equals("") ? "0" : value);
@@ -368,7 +367,7 @@ public abstract class JdbcTemplate extends ObjectPooling<Connection> {
         result = DateUtil.parseShortTime(value);
         break;
       default:
-        logger.error("type : " + dbColumnType);
+        logger.error("JdbcTemplate castDBType()  lost Data  type : " + dbColumnType);
     }
 
     return result;
@@ -384,7 +383,7 @@ public abstract class JdbcTemplate extends ObjectPooling<Connection> {
    * 获取表字段 类型信息
    * 
    */
-  protected abstract List<Integer> getColumnTypes(Connection connection, String schema, String tablename);
+  protected abstract List<Integer> getColumnTypes(String schema, String tablename);
 
   /***
    * 
@@ -399,38 +398,29 @@ public abstract class JdbcTemplate extends ObjectPooling<Connection> {
    * @param tableName
    * @return
    */
-  public boolean isTableExits(String schema, String tableName) {
-    boolean flag = false;
-    schema = StringUtil.isEmpty(schema) ? null : schema.toUpperCase();
-    Connection connection = checkOut();
-    DatabaseMetaData meta;
-    ResultSet rs = null;
-    try {
-      meta = connection.getMetaData();
-      switch (this.getDBProductType()) {
-        case DB2:
-          rs = meta.getTables(null, schema, tableName.toUpperCase(), new String[] { "TABLE" });
-          break;
-        case MySQL:
-          rs = meta.getTables(schema, null, tableName.toUpperCase(), new String[] { "TABLE" });
-          break;
-        default:
-          // TODO
-          // schema = conn.getCatalog();
-          break;
-      }
+  public abstract boolean isTableExits(String schema, String tableName) ;
+  
+  
 
-      if (rs != null) {
-        flag = rs.next();
-        rs.close();
-      }
-    } catch (SQLException e) {
-      e.printStackTrace();
-    } finally {
-      this.release(connection, null, rs);
-    }
+  /**
+   * 带参数的翻页功能(oracle)
+   * 
+   * @param sql
+   *          String
+   * @param paramList
+   *          ArrayList
+   * @param startIndex
+   *          int
+   * @param size
+   *          int
+   * @return HashMap[]
+   */
+  public HashMap[] queryPageSQL( String sql, int startIndex, int size, Object... paramList) {
+    StringBuffer querySQL = new StringBuffer();
+    querySQL.append("select * from (select my_table.*,rownum as my_rownum from(").append(sql).append(") my_table where rownum<").append(startIndex + size).append(
+        ") where my_rownum>=").append(startIndex);
 
-    return flag;
+    return queryForMap(querySQL.toString(), paramList);
   }
 
   /**
@@ -461,6 +451,7 @@ public abstract class JdbcTemplate extends ObjectPooling<Connection> {
   public boolean updateAnnotatedEntity(Object annotatedSample, List<Restrictions> restrictions) {
     return updateAnnotatedEntity(annotatedSample, restrictions.toArray(new Restrictions[restrictions.size()]));
   }
+
 
   /**
    * 
@@ -538,7 +529,7 @@ public abstract class JdbcTemplate extends ObjectPooling<Connection> {
 
     logger.debug(sql.toString().replace("?", "?[{}]"), params.toArray());
 
-    Connection conn = checkOut(); // this.getConnection(dbalias);
+    Connection conn = getConnection(); // this.getConnection(dbalias);
     PreparedStatement ps = null;
     try {
       ps = conn.prepareStatement(sql.toString());
@@ -654,7 +645,7 @@ public abstract class JdbcTemplate extends ObjectPooling<Connection> {
    */
   public boolean execute(String sql, Object... params) {
     boolean result = false;
-    Connection conn = checkOut();
+    Connection conn = getConnection();
     PreparedStatement ps = null;
     try {
       ps = conn.prepareStatement(sql);
@@ -683,7 +674,7 @@ public abstract class JdbcTemplate extends ObjectPooling<Connection> {
    * @return boolean
    */
   public void executeBatch(List<String> sqls) {
-    Connection conn = checkOut();
+    Connection conn = getConnection();
     Statement st = null;
     try {
       conn.setAutoCommit(false);
@@ -718,7 +709,7 @@ public abstract class JdbcTemplate extends ObjectPooling<Connection> {
    */
   public int executeUpdate(String sql, Object... params) {
     int count = 0;
-    Connection conn = checkOut();
+    Connection conn = getConnection();
     PreparedStatement ps = null;
     try {
       ps = conn.prepareStatement(sql);
@@ -749,7 +740,7 @@ public abstract class JdbcTemplate extends ObjectPooling<Connection> {
    */
   public boolean executeBatch(String sql, List<Object[]> arrays) {
     boolean result = false;
-    Connection connection = checkOut();
+    Connection connection = getConnection();
     PreparedStatement ps = null;
     int loadCount = 0; // 批量计数
     try {
@@ -917,7 +908,7 @@ public abstract class JdbcTemplate extends ObjectPooling<Connection> {
     logger.debug(sql.toString().replace("?", "?[{}]"), in);
 
     // 获取数据库连接
-    Connection conn = checkOut();
+    Connection conn = getConnection();
     // 使用Connection来创建一个CallableStatment对象
     CallableStatement cstmt = null;
     try {
@@ -1150,6 +1141,158 @@ public abstract class JdbcTemplate extends ObjectPooling<Connection> {
 
   /************************************************************ "select" start ************************************************************/
 
+  
+  /**
+   * 查询一条记录
+   * 
+   * @param sql
+   *          String
+   * @param paramList
+   *          ArrayList
+   * @return HashMap
+   */
+  public Object queryOneObject(String sql, Object... params) {
+    Connection conn = getConnection();
+    PreparedStatement ps = null;
+    ResultSet rs = null;
+    try {
+//      conn.setReadOnly(true);
+      ps = conn.prepareStatement(sql);
+      this.setPreparedValues(ps, params);
+      rs = ps.executeQuery();
+      rs.next();
+      return rs.getObject(1);
+    } catch (SQLException e) {
+      logger.info(e.getMessage());
+      return null;
+    } finally {
+      this.release(conn, ps, rs);
+    }
+  }
+  
+
+  /**
+   * 查询一条记录
+   * 
+   * @param sql
+   *          String
+   * @param paramList
+   *          ArrayList
+   * @return HashMap
+   */
+  public List<?> queryOneAsList(String sql, Object... params) {
+    Connection conn = getConnection();
+    
+    PreparedStatement ps = null;
+    ResultSet rs = null;
+    List row = new ArrayList();
+    try {
+      ps = conn.prepareStatement(sql);
+      this.setPreparedValues(ps, params);
+      rs = ps.executeQuery();
+      ResultSetMetaData rsmd = rs.getMetaData();
+      while (rs.next()) {
+        for (int i = 1; i <= rsmd.getColumnCount(); i++) {
+          row.add(rs.getObject(i));
+        }
+      }
+      return row;
+    } catch (SQLException e) {
+      logger.info(e.getMessage());
+      return null;
+    } finally {
+      this.release(conn, ps, rs);
+    }
+  }
+  
+
+
+
+  /**
+   * 查询数据
+   * 
+   * @param sql
+   *          String
+   * @return HashMap[]
+   */
+  public HashMap[] queryForMap(String sql, Object... params) {
+    Connection conn = getConnection();
+    PreparedStatement ps = null;
+    ResultSet rs = null;
+    try {
+      ps = conn.prepareStatement(sql);
+      if (params != null) {
+        for (int i = 0; i < params.length; i++) {
+          ps.setObject(i + 1, params[i]);
+        }
+      }
+      rs = ps.executeQuery();
+
+      ResultSetMetaData rsmdt = rs.getMetaData();
+      String[] colNames = new String[rsmdt.getColumnCount()];
+      for (int i = 1; i <= rsmdt.getColumnCount(); i++) {
+        colNames[i - 1] = rsmdt.getColumnName(i).toLowerCase();
+      }
+      Vector allRow = new Vector();
+      while (rs.next()) {
+        HashMap hashRow = new HashMap();
+        for (int i = 0; i < colNames.length; i++) {
+          hashRow.put(colNames[i], rs.getObject(colNames[i]));
+        }
+        allRow.add(hashRow);
+      }
+      HashMap[] HashAllRows = new HashMap[allRow.size()];
+      for (int i = 0; i < HashAllRows.length; i++) {
+        HashAllRows[i] = (HashMap) allRow.get(i);
+      }
+      return HashAllRows;
+    } catch (SQLException e) {
+      e.printStackTrace();
+      logger.info(e.getMessage());
+      try {
+        conn.rollback();
+      } catch (SQLException ex) {
+        ex.printStackTrace();
+      }
+    } finally {
+      this.release(conn, ps, rs);
+    }
+    return null;
+  }
+
+  /**
+   * 查询sql执行的总记录数,带参数
+   * 
+   * @param sql
+   *          String
+   * @param paramList
+   *          ArrayList
+   * @return int
+   */
+  public int queryCountResult(String sql, Object... params) {
+    Connection conn = getConnection();
+    PreparedStatement ps = null;
+    ResultSet rs = null;
+    try {
+      StringBuffer querySQL = new StringBuffer();
+      querySQL.append("select count(1) from (").append(sql).append(") as my_table");
+      ps = conn.prepareStatement(querySQL.toString());
+      this.setPreparedValues(ps, params);
+      rs = ps.executeQuery();
+      if (rs.next()) {
+        return rs.getInt(1);
+      } else {
+        return 0;
+      }
+    } catch (SQLException e) {
+      logger.info(e.getMessage());
+      logger.info(sql);
+      return 0;
+    } finally {
+      this.release(conn, ps, rs);
+    }
+  }
+  
   /**
    * 
    * sql 中 AS
@@ -1157,13 +1300,13 @@ public abstract class JdbcTemplate extends ObjectPooling<Connection> {
    * 返回 封装 集合
    */
   public <T> List<T> querySampleList(Class<T> sample, String sql, Object... params) {
-    Connection conn = checkOut();
+    Connection conn = getConnection();
     ResultSetMetaData rsmdt = null;
     PreparedStatement ps = null;
     ResultSet rs = null;
     List<T> list = new ArrayList<T>();
     try {
-      conn.setReadOnly(true);
+//      conn.setReadOnly(true);
       ps = conn.prepareStatement(sql);
       this.setPreparedValues(ps, params);
       rs = ps.executeQuery();
@@ -1195,12 +1338,12 @@ public abstract class JdbcTemplate extends ObjectPooling<Connection> {
    * @return
    */
   public List<List> queryForList(String sql, Object... params) {
-    Connection conn = checkOut();
+    Connection conn = getConnection();
     PreparedStatement ps = null;
     ResultSet rs = null;
     List<List> result = new ArrayList<List>();
     try {
-      conn.setReadOnly(true);
+//      conn.setReadOnly(true);
       ps = conn.prepareStatement(sql);
       this.setPreparedValues(ps, params);
       rs = ps.executeQuery();
@@ -1224,7 +1367,7 @@ public abstract class JdbcTemplate extends ObjectPooling<Connection> {
    * 根据模板查询 queryBySample
    * 
    */
-  public <T> T findOneByAnnotatedSample(String dbalias, T annotatedSample, Restrictions... restrictions) {
+  public <T> T findOneByAnnotatedSample(T annotatedSample, Restrictions... restrictions) {
     List<String> columns = new ArrayList<String>();
     List<String> fieldNames = new ArrayList<String>();
     List<Object> params = new ArrayList<Object>();
@@ -1292,12 +1435,12 @@ public abstract class JdbcTemplate extends ObjectPooling<Connection> {
     sql += tablename + condition;
     logger.debug(sql);
 
-    Connection conn = checkOut(); // this.getConnection(dbalias);
+    Connection conn = getConnection(); // this.getConnection(dbalias);
     PreparedStatement ps = null;
     ResultSet rs = null;
     T obj = null;
     try {
-      conn.setReadOnly(true);
+//      conn.setReadOnly(true);
       ps = conn.prepareStatement(sql);
       this.setPreparedValues(ps, params);
       rs = ps.executeQuery();
@@ -1391,12 +1534,12 @@ public abstract class JdbcTemplate extends ObjectPooling<Connection> {
     sql += tablename + condition;
     logger.debug(sql.replace("?", "?[{}]"), params.toArray());
 
-    Connection conn = checkOut();
+    Connection conn = getConnection();
     PreparedStatement ps = null;
     ResultSet rs = null;
     List<T> result = new ArrayList<T>();
     try {
-      conn.setReadOnly(true);
+//      conn.setReadOnly(true);
       ps = conn.prepareStatement(sql);
       this.setPreparedValues(ps, params);
       rs = ps.executeQuery();
@@ -1428,12 +1571,12 @@ public abstract class JdbcTemplate extends ObjectPooling<Connection> {
    * @return HashMap
    */
   public HashMap queryOneAsMap(String sql, Object... params) {
-    Connection conn = checkOut();
+    Connection conn = getConnection();
     PreparedStatement ps = null;
     ResultSet rs = null;
     HashMap hashRow = null;
     try {
-      conn.setReadOnly(true);
+//      conn.setReadOnly(true);
       ps = conn.prepareStatement(sql);
       this.setPreparedValues(ps, params);
       rs = ps.executeQuery();
@@ -1475,7 +1618,7 @@ public abstract class JdbcTemplate extends ObjectPooling<Connection> {
   }
 
   public Workbook exportExcel(Workbook workbook, String sheetTitle, String sql, Object... params) {
-    Connection conn = checkOut();
+    Connection conn = getConnection();
     PreparedStatement ps = null;
     ResultSet rs = null;
 
@@ -1503,7 +1646,7 @@ public abstract class JdbcTemplate extends ObjectPooling<Connection> {
     timeStyle.setDataFormat(format.getFormat(DateStyle.TIMEFORMAT.getValue()));
 
     try {
-      conn.setReadOnly(true);
+//      conn.setReadOnly(true);
       ps = conn.prepareStatement(sql);
       this.setPreparedValues(ps, params);
       rs = ps.executeQuery();
@@ -1587,13 +1730,13 @@ public abstract class JdbcTemplate extends ObjectPooling<Connection> {
    *          文件内容编码 对应于 DB2 code page
    */
   public void exportCSV(String filePath, String encoding, char split, String sql, Object... params) {
-    Connection conn = checkOut();
+    Connection conn = getConnection();
     PreparedStatement ps = null;
     ResultSet rs = null;
     BufferedWriter bufferedWriter = null;
 
     try {
-      conn.setReadOnly(true);
+//      conn.setReadOnly(true);
       ps = conn.prepareStatement(sql);
       this.setPreparedValues(ps, params);
       rs = ps.executeQuery();
@@ -1686,12 +1829,12 @@ public abstract class JdbcTemplate extends ObjectPooling<Connection> {
    * @param filePath
    */
   public void exportCSV_BACK(String filePath, char split, String sql, Object... params) {
-    Connection conn = checkOut();
+    Connection conn = getConnection();
     PreparedStatement ps = null;
     ResultSet rs = null;
 
     try {
-      conn.setReadOnly(true);
+//      conn.setReadOnly(true);
       ps = conn.prepareStatement(sql);
       this.setPreparedValues(ps, params);
       rs = ps.executeQuery();
@@ -1728,7 +1871,7 @@ public abstract class JdbcTemplate extends ObjectPooling<Connection> {
    */
   public void loadExcelFile(String schema, String tablename, String filePath) {
     long start = System.currentTimeMillis();
-    Connection conn = checkOut();
+    Connection conn = getConnection();
     PreparedStatement ps = null;
     try {
       // 构造 XSSFWorkbook 对象，strPath 传入文件路径
@@ -1743,7 +1886,7 @@ public abstract class JdbcTemplate extends ObjectPooling<Connection> {
       }
 
       // 字段类型
-      List<Integer> columnTypes = this.getColumnTypes(conn, schema, tablename);
+      List<Integer> columnTypes = this.getColumnTypes(schema, tablename);
 
       // 根据表名 生成 Insert语句
       // "insert into CBOD_ECCMRAMR values (?, ?, ?, ?, ?, ?, ?,?, ?, ?, ?, ?, ?, ?,?,?,?)"
@@ -1845,7 +1988,7 @@ public abstract class JdbcTemplate extends ObjectPooling<Connection> {
     // 数据库文件 分割符号 0X1D : 29
     // split = new String(new byte[] { 29 });
     long start = System.currentTimeMillis();
-    Connection connection = this.checkOut();
+    Connection connection = this.getConnection();
     PreparedStatement ps = null;
     BufferedReader reader = null;
 
@@ -1855,7 +1998,7 @@ public abstract class JdbcTemplate extends ObjectPooling<Connection> {
       String encode = IOHandler.getCharSetEncoding(filePath); // TODO 不靠谱
       reader = new BufferedReader(new InputStreamReader(new FileInputStream(filePath), encode));
       // 获取字段类型
-      List<Integer> columnTypes = this.getColumnTypes(connection, schema, tablename);
+      List<Integer> columnTypes = this.getColumnTypes(schema, tablename);
       int cloumnCount = columnTypes.size(); // 表 字段数
       // 根据表名 生成 Insert语句
       // "insert into CBOD_ECCMRAMR values (?, ?, ?, ?, ?, ?, ?,?, ?, ?, ?, ?, ?, ?,?,?,?)"
@@ -1955,7 +2098,7 @@ public abstract class JdbcTemplate extends ObjectPooling<Connection> {
    */
   public void loadCsvFile(String schema, String tablename, String filepath, char split) {
     long start = System.currentTimeMillis();
-    Connection connection = checkOut();
+    Connection connection = getConnection();
 
     PreparedStatement ps = null;
     CSVReader reader = null;
@@ -1965,7 +2108,7 @@ public abstract class JdbcTemplate extends ObjectPooling<Connection> {
       String encode = IOHandler.getCharSetEncoding(filepath);
       reader = new CSVReader(new BufferedReader(new InputStreamReader(new FileInputStream(filepath), encode)), split);
       // 获取字段类型
-      List<Integer> columnTypes = this.getColumnTypes(connection, schema, tablename);
+      List<Integer> columnTypes = this.getColumnTypes(schema, tablename);
       int cloumnCount = columnTypes.size();
       // 根据表名 生成 Insert语句
       // "insert into CBOD_ECCMRAMR values (?, ?, ?, ?, ?, ?, ?,?, ?, ?, ?, ?, ?, ?,?,?,?)"
