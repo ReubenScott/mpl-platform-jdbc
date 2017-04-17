@@ -13,6 +13,7 @@ import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.math.BigDecimal;
+import java.nio.charset.Charset;
 import java.sql.Blob;
 import java.sql.CallableStatement;
 import java.sql.Clob;
@@ -52,6 +53,7 @@ import org.slf4j.LoggerFactory;
 import au.com.bytecode.opencsv.CSVReader;
 import au.com.bytecode.opencsv.CSVWriter;
 
+import com.soak.common.constant.CharSetType;
 import com.soak.common.constant.DateBaseType;
 import com.soak.common.date.DateStyle;
 import com.soak.common.date.DateUtil;
@@ -72,7 +74,7 @@ import org.apache.commons.dbcp.BasicDataSource;
  * Jdbc 模版
  * 
  */
-public abstract class JdbcTemplate  {
+public abstract class JdbcTemplate {
   protected static final Logger logger = LoggerFactory.getLogger(JdbcTemplate.class);
 
   private volatile static JdbcTemplate instance;
@@ -84,12 +86,12 @@ public abstract class JdbcTemplate  {
   protected final int BATCHCOUNT = 5000; // 批量提交记录数
 
   static {
-    mapper.put("DB2", DB2Template.class);   // DB2/LINUXX8664
+    mapper.put("DB2", DB2Template.class); // DB2/LINUXX8664
     mapper.put("PostgreSQL", PostgreSQLTemplate.class);
   }
 
   // 根据数据库类型，创建相应的JdbcTemplate
-  public synchronized static JdbcTemplate getInstance() {
+  public synchronized static JdbcTemplate getInstance2() {
     if (instance == null) {
       Properties ps = PropertyReader.getInstance().read("jdbc.properties");
       String drivername = ps.getProperty("jdbc.driverClassName");
@@ -139,6 +141,45 @@ public abstract class JdbcTemplate  {
     return instance;
   }
 
+  // 根据数据库类型，创建相应的JdbcTemplate
+  public synchronized static JdbcTemplate getInstance() {
+    Connection connection = null;
+    String productName = null;
+    if (instance == null) {
+      Properties ps = PropertyReader.getInstance().read("jdbc.properties");
+      String drivername = ps.getProperty("jdbc.driverClassName");
+      String url = ps.getProperty("jdbc.url");
+      String username = ps.getProperty("jdbc.username");
+      String password = ps.getProperty("jdbc.password");
+
+      dbParameter.setDriverclass(ps.getProperty("jdbc.driverClassName"));
+      dbParameter.setUrl(ps.getProperty("jdbc.url"));
+      dbParameter.setUsername(ps.getProperty("jdbc.username"));
+      dbParameter.setPassword(ps.getProperty("jdbc.password"));
+      try {
+        Class.forName(dbParameter.getDriverclass());
+        connection = DriverManager.getConnection(dbParameter.getUrl(), dbParameter.getUsername(), dbParameter.getPassword());
+
+        DatabaseMetaData metaData = connection.getMetaData();
+        productName = metaData.getDatabaseProductName();
+        DateBaseType dbType = DateBaseType.getDateBaseType(productName);
+        instance = mapper.get(dbType.getValue()).newInstance(); // 创建对象
+      } catch (Exception e) {
+        e.printStackTrace();
+        throw new RuntimeException("无法创建【" + productName + "】对应的JDBC模版");
+      } finally {
+        if (connection != null) {
+          try {
+            connection.close();
+          } catch (SQLException e) {
+            e.printStackTrace();
+          }
+        }
+      }
+    }
+    return instance;
+  }
+
   /**
    * 获取 数据库连接
    * 
@@ -147,17 +188,17 @@ public abstract class JdbcTemplate  {
   protected Connection getConnection() {
     Connection connection = null;
     try {
-      connection = dataSource.getConnection();
-//      connection.setCatalog(catalog)
+      // connection = dataSource.getConnection();
+      connection = DriverManager.getConnection(dbParameter.getUrl(), dbParameter.getUsername(), dbParameter.getPassword());
+      // connection.setCatalog(catalog)
     } catch (SQLException e) {
       e.printStackTrace();
     } finally {
-//      checkIn(connection);
+      // checkIn(connection);
     }
 
     return connection;
   }
-
 
   /**
    * 获取数据库 类型
@@ -280,17 +321,19 @@ public abstract class JdbcTemplate  {
    * @param ps
    * @param params
    */
-  protected void setPreparedValues(PreparedStatement ps, Object[] params) {
+  protected void setPreparedValues(PreparedStatement ps, List<Object> params) {
     try {
-      if (params != null && params.length > 0) {
-        for (int i = 0; i < params.length; i++) {
-          ps.setObject(i + 1, params[i]);
+      if (params != null && params.size() > 0) {
+        for (int i = 0; i < params.size(); i++) {
+//          ps.setObject(i + 1, params.get(i));
+          ps.setObject(i + 1, castJavatoDBValue(params.get(i)));
         }
       }
     } catch (SQLException e) {
       e.printStackTrace();
     }
   }
+
 
   /**
    * 设置参数
@@ -298,19 +341,76 @@ public abstract class JdbcTemplate  {
    * @param ps
    * @param params
    */
-  protected void setPreparedValues(PreparedStatement ps, List<Object> params) {
+  protected void setPreparedValues(PreparedStatement ps, Object[] params) {
     try {
-      if (params != null && params.size() > 0) {
-        for (int i = 0; i < params.size(); i++) {
-          ps.setObject(i + 1, params.get(i));
+      if (params != null && params.length > 0) {
+        for (int i = 0; i < params.length; i++) {
+//          ps.setObject(i + 1, params[i]);
+          ps.setObject(i + 1, castJavatoDBValue( params[i]));
         }
       }
     } catch (SQLException e) {
       e.printStackTrace();
     }
   }
+  
+
+  /**
+   * Java 转数据库 类型 
+   *  
+   * @param dbColumnType
+   * @param value
+   * @return
+   */
+  private Object castJavatoDBValue(Object javaObj){
+    if (javaObj instanceof java.util.Date) {
+      javaObj =  new java.sql.Date(((java.util.Date)javaObj).getTime());
+    } 
+    return javaObj ;
+  }
+  
+
+  public static void setParameters(PreparedStatement pstmt, List parameters) throws SQLException {
+    for (int i = 1, size = parameters.size(); i <= size; i++) {
+      Object value = parameters.get(i - 1);
+      if (value instanceof String) {
+        pstmt.setString(i, (String) value);
+      } else if (value instanceof Integer) {
+        pstmt.setInt(i, ((Integer) value).intValue());
+      } else if (value instanceof Long) {
+        pstmt.setLong(i, ((Long) value).longValue());
+      } else if (value instanceof Double) {
+        pstmt.setDouble(i, ((Double) value).doubleValue());
+      } else if (value instanceof Float) {
+        pstmt.setFloat(i, ((Float) value).floatValue());
+      } else if (value instanceof Short) {
+        pstmt.setShort(i, ((Short) value).shortValue());
+      } else if (value instanceof Byte) {
+        pstmt.setByte(i, ((Byte) value).byteValue());
+      } else if (value instanceof BigDecimal) {
+        pstmt.setBigDecimal(i, (BigDecimal) value);
+      } else if (value instanceof Boolean) {
+        pstmt.setBoolean(i, ((Boolean) value).booleanValue());
+      } else if (value instanceof Timestamp) {
+        pstmt.setTimestamp(i, (Timestamp) value);
+      } else if (value instanceof java.util.Date) {
+        pstmt.setDate(i, new java.sql.Date(((java.util.Date) value).getTime()));
+      } else if (value instanceof java.sql.Date) {
+        pstmt.setDate(i, (java.sql.Date) value);
+      } else if (value instanceof Time) {
+        pstmt.setTime(i, (Time) value);
+      } else if (value instanceof Blob) {
+        pstmt.setBlob(i, (Blob) value);
+      } else if (value instanceof Clob) {
+        pstmt.setClob(i, (Clob) value);
+      } else {
+        pstmt.setObject(i, value);
+      }
+    }
+  }
 
   
+
   /**
    * 根据数据库 字段类型 返回值
    * 
@@ -398,9 +498,7 @@ public abstract class JdbcTemplate  {
    * @param tableName
    * @return
    */
-  public abstract boolean isTableExits(String schema, String tableName) ;
-  
-  
+  public abstract boolean isTableExits(String schema, String tableName);
 
   /**
    * 带参数的翻页功能(oracle)
@@ -415,7 +513,7 @@ public abstract class JdbcTemplate  {
    *          int
    * @return HashMap[]
    */
-  public HashMap[] queryPageSQL( String sql, int startIndex, int size, Object... paramList) {
+  public HashMap[] queryPageSQL(String sql, int startIndex, int size, Object... paramList) {
     StringBuffer querySQL = new StringBuffer();
     querySQL.append("select * from (select my_table.*,rownum as my_rownum from(").append(sql).append(") my_table where rownum<").append(startIndex + size).append(
         ") where my_rownum>=").append(startIndex);
@@ -451,7 +549,6 @@ public abstract class JdbcTemplate  {
   public boolean updateAnnotatedEntity(Object annotatedSample, List<Restrictions> restrictions) {
     return updateAnnotatedEntity(annotatedSample, restrictions.toArray(new Restrictions[restrictions.size()]));
   }
-
 
   /**
    * 
@@ -955,11 +1052,8 @@ public abstract class JdbcTemplate  {
    * Blob or Clob object but rather a byte array respectively String
    * representation.
    * <p>
-   * Uses the <code>getObject(index)</code> method, but includes additional
-   * "hacks" to get around Oracle 10g returning a non-standard object for its
-   * TIMESTAMP datatype and a <code>java.sql.Date</code> for DATE columns
-   * leaving out the time portion: These columns will explicitly be extracted as
-   * standard <code>java.sql.Timestamp</code> object.
+   * Uses the <code>getObject(index)</code> method, but includes additional "hacks" to get around Oracle 10g returning a non-standard object for its TIMESTAMP datatype and a
+   * <code>java.sql.Date</code> for DATE columns leaving out the time portion: These columns will explicitly be extracted as standard <code>java.sql.Timestamp</code> object.
    * 
    * @param rs
    *          is the ResultSet holding the data
@@ -1054,54 +1148,13 @@ public abstract class JdbcTemplate  {
     return obj;
   }
 
-  public static void setParameters(PreparedStatement pstmt, List parameters) throws SQLException {
-    for (int i = 1, size = parameters.size(); i <= size; i++) {
-      Object value = parameters.get(i - 1);
-      if (value instanceof String) {
-        pstmt.setString(i, (String) value);
-      } else if (value instanceof Integer) {
-        pstmt.setInt(i, ((Integer) value).intValue());
-      } else if (value instanceof Long) {
-        pstmt.setLong(i, ((Long) value).longValue());
-      } else if (value instanceof Double) {
-        pstmt.setDouble(i, ((Double) value).doubleValue());
-      } else if (value instanceof Float) {
-        pstmt.setFloat(i, ((Float) value).floatValue());
-      } else if (value instanceof Short) {
-        pstmt.setShort(i, ((Short) value).shortValue());
-      } else if (value instanceof Byte) {
-        pstmt.setByte(i, ((Byte) value).byteValue());
-      } else if (value instanceof BigDecimal) {
-        pstmt.setBigDecimal(i, (BigDecimal) value);
-      } else if (value instanceof Boolean) {
-        pstmt.setBoolean(i, ((Boolean) value).booleanValue());
-      } else if (value instanceof Timestamp) {
-        pstmt.setTimestamp(i, (Timestamp) value);
-      } else if (value instanceof java.util.Date) {
-        pstmt.setDate(i, new java.sql.Date(((java.util.Date) value).getTime()));
-      } else if (value instanceof java.sql.Date) {
-        pstmt.setDate(i, (java.sql.Date) value);
-      } else if (value instanceof Time) {
-        pstmt.setTime(i, (Time) value);
-      } else if (value instanceof Blob) {
-        pstmt.setBlob(i, (Blob) value);
-      } else if (value instanceof Clob) {
-        pstmt.setClob(i, (Clob) value);
-      } else {
-        pstmt.setObject(i, value);
-      }
-    }
-  }
-
   /**
    * Return whether the given JDBC driver supports JDBC 2.0 batch updates.
    * <p>
-   * Typically invoked right before execution of a given set of statements: to
-   * decide whether the set of SQL statements should be executed through the
-   * JDBC 2.0 batch mechanism or simply in a traditional one-by-one fashion.
+   * Typically invoked right before execution of a given set of statements: to decide whether the set of SQL statements should be executed through the JDBC 2.0 batch mechanism or
+   * simply in a traditional one-by-one fashion.
    * <p>
-   * Logs a warning if the "supportsBatchUpdates" methods throws an exception
-   * and simply returns <code>false</code> in that case.
+   * Logs a warning if the "supportsBatchUpdates" methods throws an exception and simply returns <code>false</code> in that case.
    * 
    * @param con
    *          the Connection to check
@@ -1141,7 +1194,6 @@ public abstract class JdbcTemplate  {
 
   /************************************************************ "select" start ************************************************************/
 
-  
   /**
    * 查询一条记录
    * 
@@ -1156,7 +1208,7 @@ public abstract class JdbcTemplate  {
     PreparedStatement ps = null;
     ResultSet rs = null;
     try {
-//      conn.setReadOnly(true);
+      // conn.setReadOnly(true);
       ps = conn.prepareStatement(sql);
       this.setPreparedValues(ps, params);
       rs = ps.executeQuery();
@@ -1169,7 +1221,6 @@ public abstract class JdbcTemplate  {
       this.release(conn, ps, rs);
     }
   }
-  
 
   /**
    * 查询一条记录
@@ -1182,7 +1233,7 @@ public abstract class JdbcTemplate  {
    */
   public List<?> queryOneAsList(String sql, Object... params) {
     Connection conn = getConnection();
-    
+
     PreparedStatement ps = null;
     ResultSet rs = null;
     List row = new ArrayList();
@@ -1204,9 +1255,6 @@ public abstract class JdbcTemplate  {
       this.release(conn, ps, rs);
     }
   }
-  
-
-
 
   /**
    * 查询数据
@@ -1292,7 +1340,7 @@ public abstract class JdbcTemplate  {
       this.release(conn, ps, rs);
     }
   }
-  
+
   /**
    * 
    * sql 中 AS
@@ -1306,7 +1354,7 @@ public abstract class JdbcTemplate  {
     ResultSet rs = null;
     List<T> list = new ArrayList<T>();
     try {
-//      conn.setReadOnly(true);
+      // conn.setReadOnly(true);
       ps = conn.prepareStatement(sql);
       this.setPreparedValues(ps, params);
       rs = ps.executeQuery();
@@ -1343,7 +1391,7 @@ public abstract class JdbcTemplate  {
     ResultSet rs = null;
     List<List> result = new ArrayList<List>();
     try {
-//      conn.setReadOnly(true);
+      // conn.setReadOnly(true);
       ps = conn.prepareStatement(sql);
       this.setPreparedValues(ps, params);
       rs = ps.executeQuery();
@@ -1440,7 +1488,7 @@ public abstract class JdbcTemplate  {
     ResultSet rs = null;
     T obj = null;
     try {
-//      conn.setReadOnly(true);
+      // conn.setReadOnly(true);
       ps = conn.prepareStatement(sql);
       this.setPreparedValues(ps, params);
       rs = ps.executeQuery();
@@ -1539,7 +1587,7 @@ public abstract class JdbcTemplate  {
     ResultSet rs = null;
     List<T> result = new ArrayList<T>();
     try {
-//      conn.setReadOnly(true);
+      // conn.setReadOnly(true);
       ps = conn.prepareStatement(sql);
       this.setPreparedValues(ps, params);
       rs = ps.executeQuery();
@@ -1576,7 +1624,7 @@ public abstract class JdbcTemplate  {
     ResultSet rs = null;
     HashMap hashRow = null;
     try {
-//      conn.setReadOnly(true);
+      // conn.setReadOnly(true);
       ps = conn.prepareStatement(sql);
       this.setPreparedValues(ps, params);
       rs = ps.executeQuery();
@@ -1646,7 +1694,7 @@ public abstract class JdbcTemplate  {
     timeStyle.setDataFormat(format.getFormat(DateStyle.TIMEFORMAT.getValue()));
 
     try {
-//      conn.setReadOnly(true);
+      // conn.setReadOnly(true);
       ps = conn.prepareStatement(sql);
       this.setPreparedValues(ps, params);
       rs = ps.executeQuery();
@@ -1736,7 +1784,7 @@ public abstract class JdbcTemplate  {
     BufferedWriter bufferedWriter = null;
 
     try {
-//      conn.setReadOnly(true);
+      // conn.setReadOnly(true);
       ps = conn.prepareStatement(sql);
       this.setPreparedValues(ps, params);
       rs = ps.executeQuery();
@@ -1834,7 +1882,7 @@ public abstract class JdbcTemplate  {
     ResultSet rs = null;
 
     try {
-//      conn.setReadOnly(true);
+      // conn.setReadOnly(true);
       ps = conn.prepareStatement(sql);
       this.setPreparedValues(ps, params);
       rs = ps.executeQuery();
@@ -1995,7 +2043,13 @@ public abstract class JdbcTemplate  {
     boolean flag = false;
     int loadCount = 0; // 批量计数
     try {
-      String encode = IOHandler.getCharSetEncoding(filePath); // TODO 不靠谱
+      // TODO 不靠谱
+      String encode = IOHandler.getCharSetEncoding(filePath); 
+      if(!encode.equals(CharSetType.GBK.getValue())){
+        logger.warn("IOHandler get File : {}  character set  : {}  incorrect", filePath , encode  );
+        encode = CharSetType.GBK.getValue() ; //
+      }
+  
       reader = new BufferedReader(new InputStreamReader(new FileInputStream(filePath), encode));
       // 获取字段类型
       List<Integer> columnTypes = this.getColumnTypes(schema, tablename);
