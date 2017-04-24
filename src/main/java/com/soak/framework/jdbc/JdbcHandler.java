@@ -1,0 +1,2170 @@
+package com.soak.framework.jdbc;
+/*package com.soak.framework.jdbc;
+
+import java.io.BufferedReader;
+import java.io.BufferedWriter;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.OutputStreamWriter;
+import java.io.UnsupportedEncodingException;
+import java.lang.reflect.Field;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
+import java.math.BigDecimal;
+import java.math.BigInteger;
+import java.sql.Blob;
+import java.sql.CallableStatement;
+import java.sql.Clob;
+import java.sql.Connection;
+import java.sql.DatabaseMetaData;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.ResultSetMetaData;
+import java.sql.SQLException;
+import java.sql.Statement;
+import java.sql.Types;
+import java.text.DecimalFormat;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.Vector;
+
+import org.apache.poi.hssf.usermodel.HSSFDataFormat;
+import org.apache.poi.openxml4j.exceptions.InvalidFormatException;
+import org.apache.poi.ss.usermodel.Cell;
+import org.apache.poi.ss.usermodel.CellStyle;
+import org.apache.poi.ss.usermodel.DataFormat;
+import org.apache.poi.ss.usermodel.Row;
+import org.apache.poi.ss.usermodel.Sheet;
+import org.apache.poi.ss.usermodel.Workbook;
+import org.apache.poi.ss.usermodel.WorkbookFactory;
+import org.apache.poi.xssf.streaming.SXSSFWorkbook;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import com.soak.framework.constant.DBType;
+import com.soak.framework.date.DateStyle;
+import com.soak.framework.date.DateUtil;
+import com.soak.framework.io.IOHandler;
+import com.soak.framework.jdbc.datasource.DynamicDataSource;
+import com.soak.framework.orm.Column;
+import com.soak.framework.orm.Table;
+import com.soak.framework.util.BeanUtil;
+import com.soak.framework.util.ExcelUtil;
+import com.soak.framework.util.StringUtil;
+
+import au.com.bytecode.opencsv.CSVReader;
+import au.com.bytecode.opencsv.CSVWriter;
+
+public class JdbcHandler {
+
+  protected final Logger logger = LoggerFactory.getLogger(this.getClass());
+
+  private volatile static JdbcHandler instance; 
+
+  private final int BATCHCOUNT = 5000; // 批量提交记录数
+
+
+  *//**
+   * 实例化
+   * 
+   * @return
+   *//*
+  public static JdbcHandler getInstance() {
+    if (instance == null) {
+      synchronized (JdbcHandler.class) {
+        if (instance == null) {
+          instance = new JdbcHandler();
+        }
+      }
+    }
+    return instance;
+  }
+
+  *//**
+   * 获取 数据库连接
+   * 
+   * @return
+   *//*
+  private Connection getConnection(String dbalias) {
+//    Connection connection = DynamicDataSource.getInstance().getSingleConnection(dbalias);
+    Connection connection = DynamicDataSource.getInstance().checkOut(dbalias);
+    
+     * Connection connection = null; if (threadLocalConnection.get() == null) {
+     * connection = CommonDataSource.getInstance().getConnection();
+     * threadLocalConnection.set(connection); } else { connection =
+     * threadLocalConnection.get(); } return connection;
+     
+    // return CommonDataSource.getInstance().getPollConnection();
+    return connection;
+  }
+
+  *//**
+   * 设置参数
+   * 
+   * @param ps
+   * @param params
+   *//*
+  private void setPreparedValues(PreparedStatement ps, Object... params) {
+    try {
+      if (params != null && params.length > 0) {
+        for (int i = 0; i < params.length; i++) {
+          ps.setObject(i + 1, params[i]);
+        }
+      }
+    } catch (SQLException e) {
+      e.printStackTrace();
+    }
+  }
+
+  private void setPreparedValues(PreparedStatement ps, List params) {
+    try {
+      if (params != null && params.size() > 0) {
+        for (int i = 0; i < params.size(); i++) {
+          ps.setObject(i + 1, params.get(i));
+        }
+      }
+    } catch (SQLException e) {
+      e.printStackTrace();
+    }
+  }
+
+  *//**
+   * 关闭数据库连接
+   * 
+   * @param conn
+   * @param st
+   * @param rs
+   *//*
+  private void release(String alias , Connection connection, Statement st, ResultSet rs) {
+    try {
+      if (rs != null) {
+        rs.close();
+        rs = null;
+      }
+      if (st != null) {
+        st.close();
+        st = null;
+      }
+//      if (connection != null) {
+//        connection.close();
+//        connection = null;
+//      }
+      DynamicDataSource.getInstance().checkIn(alias, connection);
+    } catch (SQLException e) {
+      logger.info(e.getSQLState());
+    }
+  }
+
+  *//**
+   * 获取数据库 类型
+   *//*
+  public DBType getDBProductType(String dbalias) {
+    DBType dbType = null ;
+    try {
+      Connection connection = this.getConnection(dbalias);
+      DatabaseMetaData metaData = connection.getMetaData();
+      String productName = metaData.getDatabaseProductName();
+      dbType = DBType.getDBType(productName);
+    } catch (SQLException e) {
+      e.printStackTrace();
+    }
+    return dbType;
+  }
+
+  *//***
+   * 
+   * @return
+   *//*
+  public String getCurrentSchema(String dbalias) {
+    Connection conn = this.getConnection(dbalias);
+    String schema = null;
+    try {
+//      DatabaseMetaData metaData = conn.getMetaData();
+      switch (this.getDBProductType(dbalias)) {
+        case DB2:
+          schema = conn.getMetaData().getUserName();
+          break;
+        case MySQL:
+          schema = conn.getCatalog();  
+          break;
+        default:
+//        schema = conn.getCatalog();  
+          break;
+      }
+    } catch (SQLException e) {
+      e.printStackTrace();
+    } finally {
+      this.release(dbalias,conn, null, null);
+    }
+
+    return schema;
+  }
+
+  *//***
+   * 
+   * @return
+   *//*
+  public List<String> getSchemas(String dbalias) {
+    Connection conn = this.getConnection(dbalias);
+    List<String> schemas = new ArrayList<String>();
+    try {
+      DatabaseMetaData metaData = conn.getMetaData();
+      ResultSet rs = metaData.getSchemas();
+      while (rs.next()) {
+        schemas.add(rs.getString("TABLE_SCHEM"));
+      }
+    } catch (SQLException e) {
+      e.printStackTrace();
+    } finally {
+      this.release(dbalias,conn, null, null);
+    }
+    return schemas;
+  }
+  
+  *//***
+   *  判断数据库 表 是否存在
+   *  
+   * @param schema
+   * @param tableName
+   * @return
+   *//*
+  public boolean isTableExits(String dbalias, String schema, String tableName){
+    boolean flag = false ;
+    schema  = StringUtil.isEmpty(schema) ? null : schema.toUpperCase() ;
+    Connection connection = this.getConnection(dbalias);
+    DatabaseMetaData meta;
+    ResultSet rs = null;
+    try {
+      meta = connection.getMetaData();
+      switch (this.getDBProductType(dbalias)) {
+        case DB2:
+          rs = meta.getTables(null, schema, tableName.toUpperCase(), new String[]{"TABLE"});
+          break;
+        case MySQL:
+          rs = meta.getTables(schema, null, tableName.toUpperCase(), new String[]{"TABLE"});
+          break;
+        default:
+          // TODO
+//        schema = conn.getCatalog();  
+          break;
+      }
+      
+      if(rs != null ){
+        flag = rs.next();
+        rs.close();
+      }
+    } catch (SQLException e) {
+      e.printStackTrace();
+    } finally {
+      this.release(dbalias,connection, null, rs);
+    }
+    
+    return flag ;
+  }
+  
+
+  *//**
+   * 删除表
+   * @param schema
+   * @param tableName
+   * @return
+   *//*
+  public boolean dropTable(String dbalias, String schema, String tableName){
+    schema  = StringUtil.isEmpty(schema) ? null : schema.toUpperCase() ;
+    if(isTableExits(dbalias, schema, tableName)){
+      this.truncateTable(dbalias ,schema, tableName);
+      if(StringUtil.isEmpty(schema)){
+         this.execute(dbalias , "Drop table "+ tableName);
+      } else {
+        this.execute(dbalias, "Drop table "+ schema + "." + tableName);
+      }
+    }
+    return !isTableExits(dbalias ,schema, tableName) ;
+  }
+  
+
+  *//***
+   * 获取表字段 类型信息
+   * 
+   *//*
+  private List<Integer> getColumnTypes(Connection connection, String schema, String tablename) {
+    List<Integer> columnTypes = new ArrayList<Integer>();
+    ResultSet rs = null;
+    try {
+      DatabaseMetaData dbmd = connection.getMetaData();
+      String dbType = dbmd.getDatabaseProductName();
+      
+      // 获取 schema 
+      if (StringUtil.isEmpty(schema)) {
+        schema = getCurrentSchema(null);
+      }
+      
+      if (dbType.startsWith("DB2")) {
+        rs = dbmd.getColumns(null, schema.toUpperCase(), tablename.toUpperCase(), null);
+      } else if (dbType.startsWith("MySQL")) {
+        rs = dbmd.getColumns(schema.toUpperCase(), null, tablename.toUpperCase(), null);
+      } else {
+        // TODO
+
+      }
+      while (rs != null && rs.next()) {
+        columnTypes.add(rs.getInt("DATA_TYPE")); // 类型
+//        System.out.print(rs.getString("TABLE_CAT")); //  
+//        System.out.print(" " + rs.getString("TABLE_SCHEM"));
+//        System.out.print(" " + rs.getString("TABLE_NAME"));
+//        System.out.print(" " + rs.getString("IS_NULLABLE"));
+//        System.out.print(" " + rs.getString("REMARKS"));
+//        System.out.print(" " + rs.getString("SOURCE_DATA_TYPE"));
+        // String colName = rs.getString("COLUMN_NAME");//列名
+        // String typeName = rs.getString("TYPE_NAME");//类型名称
+        // int precision = rs.getInt("COLUMN_SIZE");//精度
+        // int isNull = rs.getInt("NULLABLE");//是否为空
+        // int scale = rs.getInt("DECIMAL_DIGITS");// 小数的位数
+      }
+    } catch (SQLException e) {
+      e.printStackTrace();
+    } finally {
+      if (rs != null) {
+        try {
+          rs.close();
+        } catch (SQLException e) {
+          e.printStackTrace();
+        }
+      }
+    }
+    return columnTypes;
+  }
+
+  *//**
+   * 根据数据库 字段类型 返回值
+   * 
+   * @param dbColumnType
+   * @param value
+   * @return
+   *//*
+  private Object castDBType(int dbColumnType, String value) {
+    if (value == null) {
+      return null;
+    }
+    Object result = null;
+    switch (dbColumnType) {
+      case Types.CHAR:
+      case Types.VARCHAR:
+      case Types.LONGVARCHAR:
+        result = value;
+        break;
+      case Types.BIT:
+      case Types.TINYINT:
+      case Types.SMALLINT:
+      case Types.INTEGER:
+      case Types.BIGINT:
+        value = value.trim();
+        if (value.equals("")) {
+          result = 0;
+        } else {
+          double d = Double.valueOf(value.trim()).doubleValue();
+          result = new DecimalFormat("#").format(d);
+        }
+        break;
+      case Types.DOUBLE:
+      case Types.FLOAT:
+      case Types.REAL:
+        value = value.trim();
+        if (value.equals("")) {
+          result = 0;
+        } else {
+          result = Double.valueOf(value);
+        }
+        break;
+      case Types.DECIMAL:
+        value = value.trim();
+        result = new BigDecimal(value.equals("") ? "0" : value);
+        break;
+      case Types.DATE: // 2016-2-25 
+        result = DateUtil.parseShortDate(value);
+        break;
+      case Types.TIMESTAMP: // 2016-2-25 7:41:18 时间戳
+        result = DateUtil.parseDateTime(value);
+        break;
+      case Types.TIME:
+        result = DateUtil.parseShortTime(value);
+        break;
+      default:
+        logger.error("type : " + dbColumnType);
+    }
+
+    return result;
+  }
+
+  //
+  public String[] readParaTable(String dbalias, String tableName, String columnName) {
+    Connection conn = this.getConnection(dbalias);
+    PreparedStatement ps = null;
+    ResultSet rs = null;
+
+    try {
+
+      int count = 0; // 记录表中数据的计数器
+      String cntSql = ""; // 查询表中有几条记录的SQL语句
+      String sltSql = ""; // 查询表中数据的SQL语句
+      if (tableName == null || tableName.equals("") || columnName == null || columnName.equals("")) {
+        return null;
+      }
+
+      if (conn == null) { // 数据库连接不成功
+        return null;
+      } else { // 测试数据库连接是否成功，如果成功进行以下查询操作
+        cntSql = "select count(*) from (select " + columnName + "  from " + tableName + " group by " + columnName + ")";
+        ps = conn.prepareStatement(cntSql);
+        rs = ps.executeQuery();
+        rs.next(); // 得到记录条数
+        count = rs.getInt(1);
+        if (count == 0) {
+          return null; // 如果未检索到记录，则返回null
+        }
+
+        // 从表中查询数据
+        String[] rsArray = new String[count]; // 创建结果集数组
+        sltSql = "select nvl(" + columnName + ",' ')  from " + tableName + " group by " + columnName;
+        ps = conn.prepareStatement(sltSql);
+        rs = ps.executeQuery();
+
+        // 将查询出来的结果放入到结果集数组中，作为返回值
+        for (int i = 0; i < count; i++) {
+          rs.next();
+          rsArray[i] = rs.getString(1);
+
+        }
+        return rsArray;
+      }
+
+    } catch (SQLException e) {
+      e.printStackTrace();
+      try {
+        conn.rollback();
+      } catch (SQLException ex) {
+        ex.printStackTrace();
+      }
+      return null;
+    } finally {
+      this.release(dbalias,conn, ps, rs);
+    }
+  }
+
+  public String[] readParaTable(String dbalias, String tableName, String destName, String sourceName, String sourceValue) {
+    Connection conn = this.getConnection(dbalias);
+    PreparedStatement ps = null;
+    ResultSet rs = null;
+    try {
+      if (tableName == null || tableName.equals("") || destName == null || destName.equals("") || sourceName == null || sourceName.equals("") || sourceValue == null
+          || sourceValue.equals("")) {
+        return null;
+      }
+      int count;
+      String sql = "select count(*) from (select " + destName + " from " + tableName + "  where " + sourceName + "='" + sourceValue + "' group by " + destName + ")";
+      if (conn == null) {
+        return null;
+      } else {
+        ps = conn.prepareStatement(sql);
+        rs = ps.executeQuery();
+        rs.next();
+        count = rs.getInt(1);
+        if (count == 0) {
+          return null;
+        }
+        sql = "select nvl(" + destName + ",' ') from " + tableName + " where " + sourceName + "='" + sourceValue + "' group by " + destName;
+        ps = conn.prepareStatement(sql);
+        rs = ps.executeQuery();
+        rs.next();
+        String[] dest = new String[count]; // 申明一个字符串数组
+        for (int i = 0; i < count; i++) {
+          dest[i] = rs.getString(1);
+          rs.next();
+        } // end for
+        return dest;
+      }
+    } catch (SQLException e) {
+      e.printStackTrace();
+      try {
+        conn.rollback();
+      } catch (SQLException ex) {
+        ex.printStackTrace();
+      }
+      return null;
+    } finally {
+      this.release(dbalias,conn, ps, rs);
+    }
+  }
+
+  *//**
+   * 数据库 插入记录
+   * 
+   * @param domain
+   * @return
+   *//*
+  public int saveSample(String dbalias , Object domain) {
+    Class sample = domain.getClass();
+    String packageName = sample.getPackage().getName();
+    String tablename = sample.getName();
+    tablename = tablename.replaceFirst(packageName + ".", "");
+    // insert into account values(?,?,?)
+
+    // 根据对象的字段 拼接 insert 语句
+    Map map = BeanUtil.unpackageBean(domain);
+    Set ks = map.keySet();
+    Object[] columns = ks.toArray();
+    Object[] params = new Object[columns.length];
+    StringBuffer keystr = new StringBuffer(" (");
+    StringBuffer valuestr = new StringBuffer(" values (");
+
+    for (int i = 0; i < columns.length; i++) {
+      String column = (String) columns[i];
+      params[i] = map.get(column);
+      if (i == 0) {
+        keystr.append(column);
+        valuestr.append("?");
+      } else {
+        keystr.append(" ," + column);
+        valuestr.append(" , ?");
+      }
+    }
+    keystr.append(") ");
+    valuestr.append(") ");
+
+    String sql = new String("insert into " + tablename + keystr + valuestr);
+
+    logger.debug(sql);
+
+    return executeUpdate(dbalias , sql, params);
+  }
+
+  
+  *//**
+   * 通过实体类生成 insert into sql语句
+   * 
+   * @param annoBean
+   *          <a href="http://my.oschina.net/u/556800" class="referer"
+   *          target="_blank">@return</a>
+   * @throws IllegalArgumentException
+   * @throws IllegalAccessException
+   * @throws NumException
+   *//*
+  public boolean saveAnnotatedBean(String dbalias , Object... annoBeans) {
+    List<String> columns = new ArrayList<String>();
+    List<Object[]> paramList = new ArrayList<Object[]>();
+    StringBuilder values = new StringBuilder();
+    String schema = null;
+    String tablename = null;
+    Class<? extends Object> stuClass = null ;
+    List<Field> annoFields = new ArrayList<Field>() ;
+    
+
+    List  beans = new ArrayList();
+    
+    // 判断是不是集合     将 参数 annoBeans（数组 或 集合） 转为 集合，方便下面便利处理。
+    for(Object annoBean : annoBeans){
+      if(annoBean instanceof Collection ){ 
+        beans.addAll((Collection)annoBean);
+      } else {
+        beans.add(annoBean);
+      }
+    }
+    
+    //  SQL 参数
+    for(Object annoBean : beans){
+      // 获取类的class
+      stuClass = annoBean.getClass();
+      if (annoBean != null) {
+        if (stuClass.isAnnotationPresent(Table.class)) { // 获得类是否有注解
+          Table table = stuClass.getAnnotation(Table.class);
+          schema = table.schema().trim();  // 获得schema
+          tablename = table.name().trim(); // 获得表名
+          Field[] fields = stuClass.getDeclaredFields();// 获得反射对象集合
+          for (Field field : fields) {// 循环组装 field : fields
+            if (field.isAnnotationPresent(Column.class)) {
+              annoFields.add(field);
+              Column col = field.getAnnotation(Column.class); // 获取列注解
+              String columnName = col.name(); // 数据库映射字段
+              if (columns.size() == 0) {
+                values.append("?");
+              } else {
+                values.append(" , ?");
+              }
+              columns.add(columnName);
+            }
+          }
+        }
+        break ;
+      }
+    }
+
+    //  SQL 参数值
+    for(Object annoBean : beans){
+      if (annoBean != null) {
+        Object[] params = new Object[annoFields.size()];
+          for (int i =0 ;i <  annoFields.size(); i++) {// 循环组装 field : fields
+            Field field = annoFields.get(i);
+            String fieldName = field.getName(); // 获取字段名称
+            String methodName = "get" + fieldName.substring(0, 1).toUpperCase() + fieldName.substring(1);// 获取字段的get方法
+            try {
+              // get到field的值
+              Method method = stuClass.getMethod(methodName);
+              params[i] = method.invoke(annoBean);
+            } catch (IllegalArgumentException e) {
+              e.printStackTrace();
+            } catch (IllegalAccessException e) {
+              e.printStackTrace();
+            } catch (SecurityException e) {
+              e.printStackTrace();
+            } catch (NoSuchMethodException e) {
+              e.printStackTrace();
+            } catch (InvocationTargetException e) {
+              e.printStackTrace();
+            }
+          }
+          
+        paramList.add(params);  
+      }
+    }
+
+    // 拼接 SQL 语句
+//    String sql = "insert into " + tablename + "(" + StringUtil.arrayToString(columns) + ") values (" + values + ")";
+    StringBuffer sql = new StringBuffer("insert into " );
+    if(StringUtil.isEmpty(schema)){
+      sql.append(tablename);
+    } else {
+      sql.append(schema.trim()+"."+ tablename);
+    }
+    sql.append(" (" + StringUtil.arrayToString(columns) + ") values (" + values + ")");
+    
+    return executeBatch(dbalias ,sql.toString(), paramList);
+  }
+  
+  *//**
+   * 通过实体类生成 删除 语句
+   * 
+   * @param annoBean
+   *          <a href="http://my.oschina.net/u/556800" class="referer"
+   *          target="_blank">@return</a>
+   * @throws IllegalArgumentException
+   * @throws IllegalAccessException
+   * @throws NumException
+   *//*
+  public boolean deleteAnnotatedBean(String dbalias , Object annoBean) {
+    List<String> columns = new ArrayList<String>();
+    List<Object[]> paramList = new ArrayList<Object[]>();
+    String schema = null;
+    String tablename = null;
+    Class<? extends Object> stuClass = null ;
+    List<Field> annoFields = new ArrayList<Field>() ;
+    
+
+    // 拼接 SQL 语句
+    StringBuffer sql = new StringBuffer("delete from " );
+    
+    // 获取类的class
+    stuClass = annoBean.getClass();
+    if (annoBean != null) {
+      if (stuClass.isAnnotationPresent(Table.class)) { // 获得类是否有注解
+        Table table = stuClass.getAnnotation(Table.class);
+        schema = table.schema().trim();  // 获得schema
+        tablename = table.name().trim(); // 获得表名
+        String[] pk = table.pk();     // 主键
+        
+        // 拼接 SQL 语句
+        if(StringUtil.isEmpty(schema)){
+          sql.append(tablename);
+        } else {
+          sql.append(schema.trim()+"."+ tablename);
+        }
+        
+        Field[] fields = stuClass.getDeclaredFields();// 获得反射对象集合
+        for (Field field : fields) {// 循环组装 field : fields
+          if (field.isAnnotationPresent(Column.class)) {
+            annoFields.add(field);
+            Column col = field.getAnnotation(Column.class); // 获取列注解
+            String columnName  = col.name(); // 数据库映射字段
+
+           
+            Object[] params = new Object[pk.length];   //  SQL 参数值
+            for (int i =0 ;i <  pk.length; i++) {// 循环组装 field : fields
+              String p =  pk[i];
+              if(p.equals(columnName)){
+                if (columns.size() == 0) {
+                  sql.append(" where "+ columnName   +" = ?"); 
+                } else {
+                  sql.append(" and "+ columnName   +" = ?"); 
+                }
+                columns.add(columnName);
+              }
+              
+              String fieldName = field.getName(); // 获取字段名称
+              String methodName = "get" + fieldName.substring(0, 1).toUpperCase() + fieldName.substring(1);// 获取字段的get方法
+              try {
+                // get到field的值
+                Method method = stuClass.getMethod(methodName);
+                params[i] = method.invoke(annoBean);
+              } catch (IllegalArgumentException e) {
+                e.printStackTrace();
+              } catch (IllegalAccessException e) {
+                e.printStackTrace();
+              } catch (SecurityException e) {
+                e.printStackTrace();
+              } catch (NoSuchMethodException e) {
+                e.printStackTrace();
+              } catch (InvocationTargetException e) {
+                e.printStackTrace();
+              }
+              paramList.add(params);  
+              
+            }
+            //todo 主键 误写 问题 长度  
+            if(pk.length == columns.size()){
+              
+            }else {
+              //TODO 主键注释输入错误
+              logger.error("主键注释输入错误: " +  sql.toString());
+              return false;
+            }
+          }
+        }
+      }
+    }
+    
+    logger.debug(sql.toString());
+
+    return executeBatch(dbalias ,sql.toString(), paramList);
+  }
+
+  *//** ************** "select" start *************** *//*
+  
+
+  *//**
+   * 根据模板查询 queryBySample
+   * 
+   *//*
+  public <T> T findOneByAnnotatedSample(String dbalias , T annotatedSample , Restrictions... restrictions ) {
+    List<String> columns = new ArrayList<String>();
+    List<String> fieldNames = new ArrayList<String>();
+    List<Object> params = new ArrayList<Object>();
+    StringBuilder condition = new StringBuilder(" where 1=1 ");
+    String schema = null;
+    String tablename = null;
+
+    // 获取类的class
+    Class<? extends Object> stuClass = annotatedSample.getClass();
+
+     通过获取类的类注解，来获取类映射的表名称 
+    if (stuClass.isAnnotationPresent(Table.class)) { // 如果类映射了表
+      Table table = (Table) stuClass.getAnnotation(Table.class);
+      // sb.append(table.name() + " where 1=1 "); // 加入表名称
+      schema = table.schema();
+      tablename = table.name();
+
+       遍历所有的字段 
+      Field[] fields = stuClass.getDeclaredFields();// 获取类的字段信息
+      for (Field field : fields) {
+        if (field.isAnnotationPresent(Column.class)) {
+          Column col = field.getAnnotation(Column.class); // 获取列注解
+          String columnName = col.name(); // 数据库映射字段
+          columns.add(columnName);
+          String fieldName = field.getName(); // 获取字段名称
+          fieldNames.add(fieldName);
+          String methodName = "get" + fieldName.substring(0, 1).toUpperCase() + fieldName.substring(1);// 获取字段的get方法
+
+          try {
+            // get到field的值
+            Method method = stuClass.getMethod(methodName);
+            Object fieldValue = method.invoke(annotatedSample);
+             空字段跳过拼接过程。。。 // 如果没有值，不拼接
+            if (fieldValue != null) {
+              condition.append(" and " + columnName + "=" + "?");
+              params.add(fieldValue);
+            }
+          } catch (SecurityException e) {
+            e.printStackTrace();
+          } catch (NoSuchMethodException e) {
+            e.printStackTrace();
+          } catch (IllegalArgumentException e) {
+            e.printStackTrace();
+          } catch (IllegalAccessException e) {
+            e.printStackTrace();
+          } catch (InvocationTargetException e) {
+            e.printStackTrace();
+          }
+
+        }
+      }
+    }
+
+    // 附加条件
+    for(Restrictions term : restrictions){
+      condition.append(term.getSql());
+      params.addAll(term.getParams());
+    }
+    
+    String sql = "select " + StringUtil.arrayToString(columns) + " from " ;
+    if(!StringUtil.isEmpty(schema)){
+      sql += schema + "." ;
+    }
+    
+    sql +=  tablename + condition;
+    logger.debug(sql);
+
+    Connection conn = this.getConnection(dbalias);
+    PreparedStatement ps = null;
+    ResultSet rs = null;
+    T obj = null ;
+    try {
+      conn.setReadOnly(true);
+      ps = conn.prepareStatement(sql);
+      this.setPreparedValues(ps, params);
+      rs = ps.executeQuery();
+      ResultSetMetaData rsmd = rs.getMetaData();
+      while (rs.next()) {
+        Map<String, Object> map = new HashMap<String, Object>();
+        for (int i = 1; i <= rsmd.getColumnCount(); i++) {
+          map.put(fieldNames.get(i - 1), rs.getObject(i));
+        }
+        obj = (T) BeanUtil.autoPackageBean(stuClass, map);
+        break;
+      }
+    } catch (SQLException e) {
+      e.printStackTrace();
+    } finally {
+      this.release(dbalias,conn, ps, rs);
+    }
+
+    return obj;
+  }
+
+  *//**
+   * 根据模板查询 queryBySample
+   * 
+   *//* 
+  public <T> List<T> findByAnnotatedSample(String dbalias , T annotatedSample , Restrictions... restrictions ) {
+    List<String> columns = new ArrayList<String>();
+    List<String> fieldNames = new ArrayList<String>();
+    List<Object> params = new ArrayList<Object>();
+    StringBuilder condition = new StringBuilder(" where 1=1 ");
+    String schema = null;
+    String tablename = null;
+
+    // 获取类的class
+    Class<? extends Object> stuClass = annotatedSample.getClass();
+
+     通过获取类的类注解，来获取类映射的表名称 
+    if (stuClass.isAnnotationPresent(Table.class)) { // 如果类映射了表
+      Table table = (Table) stuClass.getAnnotation(Table.class);
+      // sb.append(table.name() + " where 1=1 "); // 加入表名称
+      schema = table.schema();
+      tablename = table.name();
+
+       遍历所有的字段 
+      Field[] fields = stuClass.getDeclaredFields();// 获取类的字段信息
+      for (Field field : fields) {
+        if (field.isAnnotationPresent(Column.class)) {
+          Column col = field.getAnnotation(Column.class); // 获取列注解
+          String columnName = col.name(); // 数据库映射字段
+          columns.add(columnName);
+          String fieldName = field.getName(); // 获取字段名称
+          fieldNames.add(fieldName);
+          String methodName = "get" + fieldName.substring(0, 1).toUpperCase() + fieldName.substring(1);// 获取字段的get方法
+
+          try {
+            // get到field的值
+            Method method = stuClass.getMethod(methodName);
+            Object fieldValue = method.invoke(annotatedSample);
+             空字段跳过拼接过程。。。 // 如果没有值，不拼接
+            if (fieldValue != null) {
+              condition.append(" and " + columnName + "=" + "?");
+              params.add(fieldValue);
+            }
+          } catch (SecurityException e) {
+            e.printStackTrace();
+          } catch (NoSuchMethodException e) {
+            e.printStackTrace();
+          } catch (IllegalArgumentException e) {
+            e.printStackTrace();
+          } catch (IllegalAccessException e) {
+            e.printStackTrace();
+          } catch (InvocationTargetException e) {
+            e.printStackTrace();
+          }
+
+        }
+      }
+    }
+
+    // 附加条件
+    for(Restrictions term : restrictions){
+      condition.append(term.getSql());
+      params.addAll(term.getParams());
+    }
+    
+    String sql = "select " + StringUtil.arrayToString(columns) + " from " ;
+    if(!StringUtil.isEmpty(schema)){
+      sql += schema + "." ;
+    }
+    
+    sql +=  tablename + condition;
+    logger.debug(sql.replace("?", "?[{}]"), params.toArray());    
+
+    Connection conn = this.getConnection(dbalias);
+    PreparedStatement ps = null;
+    ResultSet rs = null;
+    List<T> result = new ArrayList<T>();
+    try {
+      conn.setReadOnly(true);
+      ps = conn.prepareStatement(sql);
+      this.setPreparedValues(ps, params);
+      rs = ps.executeQuery();
+      ResultSetMetaData rsmd = rs.getMetaData();
+      while (rs.next()) {
+        Map<String, Object> map = new HashMap<String, Object>();
+        for (int i = 1; i <= rsmd.getColumnCount(); i++) {
+          map.put(fieldNames.get(i - 1), rs.getObject(i));
+        }
+        T obj = (T) BeanUtil.autoPackageBean(stuClass, map);
+        result.add(obj);
+      }
+    } catch (SQLException e) {
+      e.printStackTrace();
+    } finally {
+      this.release(dbalias,conn, ps, rs);
+    }
+
+    return result;
+  }
+
+  *//**
+   * 
+   * sql 中 AS 
+   * 
+   * 返回 封装 集合
+   *//*
+  public <T> List<T> querySampleList(String dbalias, Class<T> sample, String sql, Object... params) {
+    Connection conn = this.getConnection(dbalias);
+    ResultSetMetaData rsmdt = null;
+    PreparedStatement ps = null;
+    ResultSet rs = null;
+    List<T> list = new ArrayList<T>();
+    try {
+      conn.setReadOnly(true);
+      ps = conn.prepareStatement(sql);
+      this.setPreparedValues(ps, params);
+      rs = ps.executeQuery();
+      rsmdt = rs.getMetaData();
+      while (rs.next()) {
+        Map<String, Object> map = new HashMap<String, Object>();
+        for (int i = 1; i <= rsmdt.getColumnCount(); i++) {
+          map.put(rsmdt.getColumnLabel(i), rs.getObject(i)); // 别称  sql 中 AS 后面的
+        }
+        list.add((T)BeanUtil.autoPackageBean(sample, map));
+      }
+    } catch (SQLException e) {
+      e.printStackTrace();
+      try {
+        conn.rollback();
+      } catch (SQLException ex) {
+        ex.printStackTrace();
+      }
+    } finally {
+      this.release(dbalias,conn, ps, rs);
+    }
+    return list;
+  }
+
+  
+  *//**
+   * 查询一条记录
+   * 
+   * @param sql
+   *          String
+   * @param paramList
+   *          ArrayList
+   * @return HashMap
+   *//*
+  public Object queryOneObject(String dbalias, String sql, Object... params) {
+    Connection conn = this.getConnection(dbalias);
+    PreparedStatement ps = null;
+    ResultSet rs = null;
+    try {
+      conn.setReadOnly(true);
+      ps = conn.prepareStatement(sql);
+      this.setPreparedValues(ps, params);
+      rs = ps.executeQuery();
+      rs.next();
+      return rs.getObject(1);
+    } catch (SQLException e) {
+      logger.info(e.getMessage());
+      return null;
+    } finally {
+      this.release(dbalias,conn, ps, rs);
+    }
+  }
+  
+  *//**
+   * 查询一条记录
+   * 
+   * @param sql
+   *          String
+   * @param paramList
+   *          ArrayList
+   * @return HashMap
+   *//*
+  public List<?> queryOneAsList(String dbalias, String sql, Object... params) {
+    Connection conn = this.getConnection(dbalias);
+    PreparedStatement ps = null;
+    ResultSet rs = null;
+    List row = new ArrayList();
+    try {
+      conn.setReadOnly(true);
+      ps = conn.prepareStatement(sql);
+      this.setPreparedValues(ps, params);
+      rs = ps.executeQuery();
+      ResultSetMetaData rsmd = rs.getMetaData();
+      while (rs.next()) {
+        for (int i = 1; i <= rsmd.getColumnCount(); i++) {
+          row.add(rs.getObject(i));
+        }
+      }
+      return row;
+    } catch (SQLException e) {
+      logger.info(e.getMessage());
+      return null;
+    } finally {
+      this.release(dbalias,conn, ps, rs);
+    }
+  }
+
+  *//**
+   * 查询一条记录
+   * 
+   * @param sql
+   *          String
+   * @param paramList
+   *          ArrayList
+   * @return HashMap
+   *//*
+  public HashMap queryOneAsMap(String dbalias, String sql, Object... params) {
+    Connection conn = this.getConnection(dbalias);
+    PreparedStatement ps = null;
+    ResultSet rs = null;
+    HashMap hashRow = null;
+    try {
+      conn.setReadOnly(true);
+      ps = conn.prepareStatement(sql);
+      this.setPreparedValues(ps, params);
+      rs = ps.executeQuery();
+      ResultSetMetaData dbRsMd = rs.getMetaData();
+      String[] colNames = new String[dbRsMd.getColumnCount()];
+      for (int i = 1; i <= dbRsMd.getColumnCount(); i++) {
+        colNames[i - 1] = dbRsMd.getColumnLabel(i);  // 获取SQL 字段 别名  对比  getColumnName
+      }
+      while (rs.next()) {
+        hashRow = new HashMap();
+        for (int i = 0; i < colNames.length; i++) {
+          hashRow.put(colNames[i], rs.getObject(colNames[i]));
+        }
+      }
+      return hashRow;
+    } catch (SQLException e) {
+      logger.info(e.getMessage());
+      return null;
+    } finally {
+      this.release(dbalias,conn, ps, rs);
+    }
+  }
+
+  *//**
+   * 查询
+   * 
+   * @param sql
+   * @return
+   *//*
+  public List<List> queryForList(String dbalias, String sql, Object... params) {
+    Connection conn = this.getConnection(dbalias);
+    PreparedStatement ps = null;
+    ResultSet rs = null;
+    List<List> result = new ArrayList<List>();
+    try {
+      conn.setReadOnly(true);
+      ps = conn.prepareStatement(sql);
+      this.setPreparedValues(ps, params);
+      rs = ps.executeQuery();
+      ResultSetMetaData rsmd = rs.getMetaData();
+      while (rs.next()) {
+        List row = new ArrayList();
+        for (int i = 1; i <= rsmd.getColumnCount(); i++) {
+          row.add(rs.getObject(i));
+        }
+        result.add(row);
+      }
+    } catch (SQLException e) {
+      e.printStackTrace();
+    } finally {
+      this.release(dbalias,conn, ps, rs);
+    }
+    return result;
+  }
+
+  *//**
+   * 查询数据
+   * 
+   * @param sql
+   *          String
+   * @return HashMap[]
+   *//*
+  public HashMap[] queryForMap(String dbalias, String sql, Object... params) {
+    Connection conn = this.getConnection(dbalias);
+    PreparedStatement ps = null;
+    ResultSet rs = null;
+    try {
+      conn.setReadOnly(true);
+      ps = conn.prepareStatement(sql);
+      if (params != null) {
+        for (int i = 0; i < params.length; i++) {
+          ps.setObject(i + 1, params[i]);
+        }
+      }
+      rs = ps.executeQuery();
+
+      ResultSetMetaData rsmdt = rs.getMetaData();
+      String[] colNames = new String[rsmdt.getColumnCount()];
+      for (int i = 1; i <= rsmdt.getColumnCount(); i++) {
+        colNames[i - 1] = rsmdt.getColumnName(i).toLowerCase();
+      }
+      Vector allRow = new Vector();
+      while (rs.next()) {
+        HashMap hashRow = new HashMap();
+        for (int i = 0; i < colNames.length; i++) {
+          hashRow.put(colNames[i], rs.getObject(colNames[i]));
+        }
+        allRow.add(hashRow);
+      }
+      HashMap[] HashAllRows = new HashMap[allRow.size()];
+      for (int i = 0; i < HashAllRows.length; i++) {
+        HashAllRows[i] = (HashMap) allRow.get(i);
+      }
+      return HashAllRows;
+    } catch (SQLException e) {
+      e.printStackTrace();
+      logger.info(e.getMessage());
+      try {
+        conn.rollback();
+      } catch (SQLException ex) {
+        ex.printStackTrace();
+      }
+    } finally {
+      this.release(dbalias,conn, ps, rs);
+    }
+    return null;
+  }
+
+  *//**
+   * 查询sql执行的总记录数,带参数
+   * 
+   * @param sql
+   *          String
+   * @param paramList
+   *          ArrayList
+   * @return int
+   *//*
+  public int queryCountResult(String dbalias, String sql, Object... params) {
+    Connection conn = this.getConnection(dbalias);
+    PreparedStatement ps = null;
+    ResultSet rs = null;
+    try {
+      StringBuffer querySQL = new StringBuffer();
+      querySQL.append("select count(1) from (").append(sql).append(") as my_table");
+      ps = conn.prepareStatement(querySQL.toString());
+      this.setPreparedValues(ps, params);
+      rs = ps.executeQuery();
+      if (rs.next()) {
+        return rs.getInt(1);
+      } else {
+        return 0;
+      }
+    } catch (SQLException e) {
+      logger.info(e.getMessage());
+      logger.info(sql);
+      return 0;
+    } finally {
+      this.release(dbalias,conn, ps, rs);
+    }
+  }
+
+  *//** ************** "select" end *************** *//*
+  
+  *//***
+   * 
+   * 执行DDL 语句
+   *//*
+  public boolean execute(String dbalias, String sql, Object... params) {
+    boolean result = false ;
+    Connection conn = this.getConnection(dbalias);
+    PreparedStatement ps = null;
+    try {
+      ps = conn.prepareStatement(sql);
+      this.setPreparedValues(ps, params);
+      ps.execute();
+      result = true ;
+    } catch (SQLException e) {
+      e.printStackTrace();
+      try {
+        conn.rollback();
+      } catch (SQLException ex) {
+        ex.printStackTrace();
+      }
+      logger.error(sql);
+    } finally {
+      this.release(dbalias,conn, ps, null);
+    }
+    return result;
+  }
+  
+
+  *//** ************** "insert, delete , update" start *************** *//*
+
+  *//**
+   * 执行一条带参数的sql
+   * 
+   * @param sql
+   *          String
+   * @param param
+   *          List
+   * @return 影响行数
+   *//*
+  public int executeUpdate(String dbalias, String sql, Object... params) {
+    int count = 0;
+    Connection conn = this.getConnection(dbalias);
+    PreparedStatement ps = null;
+    try {
+      ps = conn.prepareStatement(sql);
+      this.setPreparedValues(ps, params);
+      count = ps.executeUpdate();
+    } catch (SQLException e) {
+      e.printStackTrace();
+      try {
+        conn.rollback();
+      } catch (SQLException ex) {
+        ex.printStackTrace();
+      }
+      logger.error(sql);
+    } finally {
+      this.release(dbalias,conn, ps, null);
+    }
+    return count;
+  }
+
+  *//**
+   * 一条带参数的sql 执行多次
+   * 
+   * @param sql
+   *          String
+   * @param param
+   *          List Object[] 的集合
+   * @return boolean
+   *//*
+  public boolean executeBatch(String dbalias, String sql, List<Object[]> arrays) {
+    boolean result = false ;
+    Connection connection = this.getConnection(dbalias);
+    PreparedStatement ps = null;
+    int loadCount = 0; // 批量计数
+    try {
+      connection.setAutoCommit(false);
+      ps = connection.prepareStatement(sql);
+      for (int i = 0; i < arrays.size(); i++) {
+        Object[] params = arrays.get(i);
+        this.setPreparedValues(ps, params);
+        ps.addBatch();
+        if (++loadCount % BATCHCOUNT == 0) {
+          ps.executeBatch();
+          connection.commit();
+        }
+      }
+      ps.executeBatch();
+      connection.commit();
+      connection.setAutoCommit(true);
+      result = true ;
+    } catch (SQLException e) {
+      e.printStackTrace();
+      try {
+        connection.rollback();
+      } catch (SQLException ex) {
+        ex.printStackTrace();
+      }
+      return false;
+    } finally {
+      this.release(dbalias,connection, ps, null);
+    }
+    return result;
+  }
+
+  *//**
+   * 执行一批sql
+   * 
+   * @param sqlList
+   *          List
+   * @return boolean
+   *//*
+  public void executeBatch(String dbalias, List<String> sqls) {
+    Connection conn = this.getConnection(dbalias);
+    Statement st = null;
+    try {
+      conn.setAutoCommit(false);
+      st = conn.createStatement();
+      for (int i = 0; i < sqls.size(); i++) {
+        String sql = sqls.get(i);
+        st.addBatch(sql);
+      }
+      st.executeBatch();
+      conn.commit();
+      conn.setAutoCommit(true);
+    } catch (SQLException e) {
+      try {
+        conn.rollback();
+      } catch (SQLException ex) {
+        ex.printStackTrace();
+      }
+      e.printStackTrace();
+    } finally {
+      this.release(dbalias,conn, st, null);
+    }
+  }
+
+  
+  *//**
+   * 
+   * 根据实例更新
+   * 
+   *//*
+  public boolean updateAnnotatedEntity(String dbalias , Object annotatedSample , List<Restrictions> restrictions ) {
+    return updateAnnotatedEntity(dbalias, annotatedSample, restrictions.toArray(new Restrictions[restrictions.size()]));
+  }
+
+  *//**
+   * 
+   * 根据实例更新
+   * 
+   *//*
+  public boolean updateAnnotatedEntity(String dbalias , Object annotatedSample , Restrictions... restrictions ) {
+    boolean result = false ;
+    List<String> fieldNames = new ArrayList<String>();
+    List<Object> params = new ArrayList<Object>();
+    String schema = null;
+    String tablename = null;
+    StringBuffer sql = new StringBuffer("update ");
+    
+    
+    // 获取类的class
+    Class<? extends Object> stuClass = annotatedSample.getClass();
+
+     通过获取类的类注解，来获取类映射的表名称 
+    if (stuClass.isAnnotationPresent(Table.class)) { // 如果类映射了表
+      Table table = (Table) stuClass.getAnnotation(Table.class);
+      schema = table.schema();
+      tablename = table.name();
+      
+      if(!StringUtil.isEmpty(schema)){
+        sql.append( schema + "." );
+      }
+      sql.append(tablename + " set ");
+
+       遍历所有的字段 
+      Field[] fields = stuClass.getDeclaredFields();// 获取类的字段信息
+      for (Field field : fields) {
+        if (field.isAnnotationPresent(Column.class)) {
+          Column col = field.getAnnotation(Column.class); // 获取列注解
+          String columnName = col.name(); // 数据库映射字段
+          String fieldName = field.getName(); // 获取字段名称
+          fieldNames.add(fieldName);
+          String methodName = "get" + fieldName.substring(0, 1).toUpperCase() + fieldName.substring(1);// 获取字段的get方法
+
+          try {
+            // get到field的值
+            Method method = stuClass.getMethod(methodName);
+            Object fieldValue = method.invoke(annotatedSample);
+             空字段跳过拼接过程。。。 // 如果没有值，不拼接
+            if (fieldValue != null) {
+              if(params.size() == 0 ){
+                sql.append(columnName + " = " + " ? ");
+              } else{
+                sql.append(", " + columnName + " = " + " ? ");
+              }
+              params.add(fieldValue);
+            }
+          } catch (SecurityException e) {
+            e.printStackTrace();
+          } catch (NoSuchMethodException e) {
+            e.printStackTrace();
+          } catch (IllegalArgumentException e) {
+            e.printStackTrace();
+          } catch (IllegalAccessException e) {
+            e.printStackTrace();
+          } catch (InvocationTargetException e) {
+            e.printStackTrace();
+          }
+
+        }
+      }
+    }
+
+    // 条件
+    StringBuilder condition = new StringBuilder(" where 1=1 ");
+    for(Restrictions term : restrictions){
+      condition.append(term.getSql());
+      params.addAll(term.getParams());
+    }
+    sql.append( condition);
+    
+    logger.debug(sql.toString().replace("?", "?[{}]"), params.toArray());    
+
+    Connection conn = this.getConnection(dbalias);
+    PreparedStatement ps = null;
+    try {
+      ps = conn.prepareStatement(sql.toString());
+      this.setPreparedValues(ps, params);
+      ps.execute();
+      result = true ;
+    } catch (SQLException e) {
+      e.printStackTrace();
+    } finally {
+      this.release(dbalias,conn, ps, null);
+    }
+
+    return result;
+  }
+  
+  
+
+  *//** ************** "insert, delete , update" end *************** *//*
+
+  // *********** ***************
+
+  *//**
+   * 带参数的翻页功能(oracle)
+   * 
+   * @param sql
+   *          String
+   * @param paramList
+   *          ArrayList
+   * @param startIndex
+   *          int
+   * @param size
+   *          int
+   * @return HashMap[]
+   *//*
+  public HashMap[] queryPageSQL(String dbalias, String sql, int startIndex, int size, Object... paramList) {
+    StringBuffer querySQL = new StringBuffer();
+    querySQL.append("select * from (select my_table.*,rownum as my_rownum from(").append(sql).append(") my_table where rownum<").append(startIndex + size).append(
+        ") where my_rownum>=").append(startIndex);
+
+    return queryForMap(dbalias ,querySQL.toString(), paramList);
+  }
+
+  *//***
+   * 
+   * 清空表
+   *//*
+  public boolean truncateTable(String dbalias, String schema, String tablename) {
+    Connection connection = this.getConnection(dbalias);
+    Statement st = null;
+    boolean result = false ;
+    try {
+      st = connection.createStatement();
+      String sql = null ;
+      String stabName = null ;
+      if (!StringUtil.isEmpty(schema)) {
+        stabName  = schema.trim() + "." + tablename.trim() ;
+      } else {
+        stabName  = tablename.trim() ;
+      }
+      
+      switch (this.getDBProductType(dbalias)) {
+        case DB2:
+//          sql = "TRUNCATE TABLE " + tablename + " IMMEDIATE" ;  
+          sql = "ALTER TABLE " + stabName +  " ACTIVATE NOT LOGGED INITIALLY WITH EMPTY TABLE";
+          break;
+        case MySQL:
+          sql = "TRUNCATE TABLE " + stabName  ;
+          break;
+        default:
+          //TODO
+          break;
+      }
+      st.execute(sql.toString());
+   //   connection.commit();
+      result = true ;
+    } catch (SQLException e) {
+      e.printStackTrace();
+    } finally {
+      this.release(dbalias,connection, st, null);
+    }
+    return result;
+  }
+
+  
+
+  *//**
+   * 调用存储过程  
+   * 
+   * out : Types.INTEGER 
+   *//*
+  public List callProcedure(String dbalias, String procedureName, Object[] in , int... outTypes) {
+    List result  = new ArrayList();
+    StringBuffer sql;
+    sql = new StringBuffer("{call "+ procedureName + "(");
+    if( null == in || in.length == 0){  // 无入参
+      // 有出参
+      if( outTypes != null && outTypes.length > 0){
+        for (int i = 1; i < outTypes.length ; i++) {
+          sql.append("?,");
+        }
+        sql.append("?");
+      }
+    } else { // 有入参
+      for (int i = 1; i < in.length ; i++) {
+        sql.append("?,");
+      }
+      sql.append("?");
+      // 有出参
+      if( outTypes != null && outTypes.length > 0){
+        for (int i = 0; i < outTypes.length ; i++) {
+          sql.append(",?");
+        }
+      }
+    }
+    sql.append(")}");
+    
+    logger.debug(sql.toString().replace("?", "?[{}]"), in);   
+    
+    // 获取数据库连接
+    Connection conn = this.getConnection(dbalias);
+    // 使用Connection来创建一个CallableStatment对象
+    CallableStatement cstmt = null ;
+    try {
+      cstmt = conn.prepareCall(sql.toString());
+       int parameterIndex = 0 ;
+      // 注册CallableStatement  入参数是int类型
+      if( in != null && in.length > 0){
+        for (int i = 0; i < in.length ; i++) {
+          cstmt.setObject(++parameterIndex, in[i]);
+        }
+      }
+      int startIndex  = parameterIndex + 1  ;  // 出参起始 位置序号
+      // 注册CallableStatement的第三个参数是int类型
+      for(int type : outTypes){
+        cstmt.registerOutParameter(++parameterIndex, type);
+      }
+//      if( outTypes != null && outTypes.length > 0){
+//        for (int i = 0; i < outTypes.length ; i++) {
+//          cstmt.registerOutParameter(++parameterIndex, outTypes[i]);
+//        }
+//      }
+      
+      // 执行存储过程
+      cstmt.execute();
+      
+      // 获取，并输出存储过程传出参数的值。
+      for (int i = startIndex ; i <= parameterIndex ; i++) {
+        result.add(cstmt.getObject(i));
+      }
+    } catch (SQLException e) {
+      e.printStackTrace();
+      return null ;
+    } finally {
+      this.release(dbalias,conn, cstmt, null);
+    }
+    
+    return result ;
+  }
+
+  *//***
+   * 
+   * DEL文件入库
+   * 
+   * @param sql
+   * 
+   * @param filePath
+   *          DEL 文件路径
+   * 
+   * @param split
+   *          字段分隔符
+   * 
+   *//*
+  public boolean loadDelFile(String dbalias, String schema, String tablename, String filePath, char split) {
+    // 数据库文件 分割符号 0X1D : 29
+    // split = new String(new byte[] { 29 });
+    long start = System.currentTimeMillis();
+    Connection connection = this.getConnection(dbalias);
+    PreparedStatement ps = null;
+    BufferedReader reader = null;
+
+    boolean flag = false ;
+    int loadCount = 0; // 批量计数
+    try {
+      String encode = IOHandler.getCharSetEncoding(filePath);  //TODO 不靠谱
+      reader = new BufferedReader(new InputStreamReader(new FileInputStream(filePath), encode));
+      // 获取字段类型
+      List<Integer> columnTypes = this.getColumnTypes(connection, schema, tablename);
+      int cloumnCount = columnTypes.size();   // 表 字段数
+      // 根据表名 生成 Insert语句
+      // "insert into CBOD_ECCMRAMR values (?, ?, ?, ?, ?, ?, ?,?, ?, ?, ?, ?, ?, ?,?,?,?)"
+      StringBuffer sql;
+      if (schema == null || "".equals(schema.trim())) {
+        sql = new StringBuffer("insert into " + tablename + " values (");
+      } else {
+        sql = new StringBuffer("insert into " + schema.trim() + "." + tablename + " values (");
+      }
+      for (int i = 1; i < cloumnCount; i++) {
+        sql.append("?,");
+      }
+      sql.append("?)");
+      
+      logger.debug(sql.toString());
+
+      ps = connection.prepareStatement(sql.toString());
+      connection.setAutoCommit(false);
+
+      String line;
+      while ((line = reader.readLine()) != null) {
+        String[] lineData = line.split(String.valueOf(split));  
+        int dataNum = lineData.length ; // 数据文件 字段数
+        for (int i = 0; i < cloumnCount; i++) {
+          try {
+            if( i + 1 > dataNum){
+              ps.setObject(i + 1, null);
+            } else {
+              ps.setObject(i + 1, this.castDBType(columnTypes.get(i), lineData[i]));
+            }
+          } catch (Exception e) {
+            logger.error(columnTypes.get(i) + " :  " + lineData[i]);
+            e.printStackTrace();
+          }
+        }
+        ps.addBatch();
+        // 1w条记录插入一次
+        if (++loadCount % BATCHCOUNT == 0) {
+          ps.executeBatch();
+          connection.commit();
+        }
+      }
+      // 最后插入不足1w条的数据
+      ps.executeBatch();
+      connection.commit();
+      connection.setAutoCommit(true);
+      flag = true ;
+      long end = System.currentTimeMillis();
+      logger.debug("load into ["+ schema +"." + tablename +  "] Total : [" + loadCount + "] records, Take [" + (float)(end - start)/1000 + "] seconds . Average : "  + 1000*loadCount/(end - start) + " records/second"  );
+    } catch (UnsupportedEncodingException e) {
+      e.printStackTrace();
+    } catch (FileNotFoundException e) {
+      e.printStackTrace();
+    } catch (IOException e) {
+      e.printStackTrace();
+    } catch (SQLException e) {
+      e.printStackTrace();
+      e.getNextException().printStackTrace();
+      logger.error(e.getMessage());
+    } finally {
+      try {
+        this.release(dbalias,connection, ps, null);
+        if (reader != null) {
+          reader.close();
+        }
+      } catch (IOException e) {
+        e.printStackTrace();
+      }
+    }
+    return flag ;
+  }
+
+  
+
+  *//***
+   * CSV（默认以逗号分割的） 文件入库    (char)44 
+   * @param tablename
+   *          入库表名
+   * @param filePath
+   *          文件路径
+   * @param split
+   *          字段分隔符
+   *//*
+  public void loadCsvFile(String dbalias, String schema, String tablename, String filepath) {
+    this.loadCsvFile(dbalias ,schema,  tablename,  filepath, (char)44 );
+  }
+  
+  *//***
+   * CSV（默认以逗号分割的） 文件入库
+   * @param tablename
+   *          入库表名
+   * @param filePath
+   *          文件路径
+   * @param split
+   *          字段分隔符
+   *//*
+  public void loadCsvFile(String dbalias, String schema, String tablename, String filepath, char split) {
+    long start = System.currentTimeMillis();
+    Connection connection = this.getConnection(dbalias);
+
+    PreparedStatement ps = null;
+    CSVReader reader = null;
+    int loadCount = 0; // 批量计数
+
+    try {
+      String encode = IOHandler.getCharSetEncoding(filepath);
+      reader = new CSVReader(new BufferedReader(new InputStreamReader(new FileInputStream(filepath), encode)), split);
+      // 获取字段类型
+      List<Integer> columnTypes = this.getColumnTypes(connection, schema, tablename);
+      int cloumnCount = columnTypes.size();
+      // 根据表名 生成 Insert语句
+      // "insert into CBOD_ECCMRAMR values (?, ?, ?, ?, ?, ?, ?,?, ?, ?, ?, ?, ?, ?,?,?,?)"
+      StringBuffer sql;
+      if (schema == null || "".equals(schema.trim())) {
+        sql = new StringBuffer("insert into " + tablename + " values (");
+      } else {
+        sql = new StringBuffer("insert into " + schema.trim() + "." + tablename + " values (");
+      }
+      for (int i = 1; i < cloumnCount; i++) {
+        sql.append("?,");
+      }
+      sql.append("?)");
+      logger.debug(sql.toString());
+
+      ps = connection.prepareStatement(sql.toString());
+      connection.setAutoCommit(false);
+      String[] csvRow = null; // row
+      while ((csvRow = reader.readNext()) != null) {
+//        for (int i = 0; i < (csvRow.length > cloumnCount ? cloumnCount : csvRow.length); i++) {
+//          try {
+//            ps.setObject(i + 1, this.castDBType(columnTypes.get(i), csvRow[i]));
+//          } catch (Exception e) {
+//            System.out.println(columnTypes.get(i) + " :  " + csvRow[i]);
+//            e.printStackTrace();
+//          }
+//        }
+        int dataNum = csvRow.length ; // 数据文件 字段数
+        for (int i = 0; i < cloumnCount; i++) {
+          try {
+            if( i + 1 > dataNum){
+              ps.setObject(i + 1, null);
+            } else {
+              ps.setObject(i + 1, this.castDBType(columnTypes.get(i), csvRow[i]));
+            }
+          } catch (Exception e) {
+            System.out.println(columnTypes.get(i) + " :  " + csvRow[i]);
+            e.printStackTrace();
+          }
+        }
+        ps.addBatch();
+        // 1w条记录插入一次
+        if (++loadCount % BATCHCOUNT == 0) {
+          ps.executeBatch();
+          connection.commit();
+        }
+      }
+      // 最后插入不足1w条的数据
+      ps.executeBatch();
+      connection.commit();
+      connection.setAutoCommit(true);
+      long end = System.currentTimeMillis();
+      logger.debug("load into ["+ schema +"." + tablename +  "] Total : [" + loadCount + "] records, Take [" + (float)(end - start)/1000 + "] seconds . Average : "  + 1000*loadCount/(end - start) + " records/second"  );
+    } catch (UnsupportedEncodingException e) {
+      e.printStackTrace();
+    } catch (FileNotFoundException e) {
+      e.printStackTrace();
+    } catch (IOException e) {
+      e.printStackTrace();
+    } catch (SQLException e) {
+      e.printStackTrace();
+      logger.error(e.getMessage());
+    } finally {
+      try {
+        this.release(dbalias,connection, ps, null);
+        if (reader != null) {
+          reader.close();
+        }
+      } catch (IOException e) {
+        e.printStackTrace();
+      }
+    }
+  }
+  
+
+  *//**
+   * 查询到处数据为 CSV
+   * 
+   * @param conn
+   * @param filePath
+   * @param encoding 文件内容编码   对应于  DB2 code page
+   *//*
+  public void exportCSV(String dbalias , String filePath , String encoding, char split, String sql, Object... params) {
+    Connection conn = this.getConnection(dbalias);
+    PreparedStatement ps = null;
+    ResultSet rs = null;
+    BufferedWriter bufferedWriter = null ;
+    
+    try {
+      conn.setReadOnly(true);
+      ps = conn.prepareStatement(sql);
+      this.setPreparedValues(ps, params);
+      rs = ps.executeQuery();
+
+      //确认流的输出文件和编码格式，此过程创建了“test.txt”实例
+      OutputStreamWriter outputWriter = new OutputStreamWriter(new FileOutputStream(filePath),encoding);
+      bufferedWriter = new BufferedWriter(outputWriter);
+      
+      ResultSetMetaData rsmd = rs.getMetaData();
+      // 数据字段类型
+      List<Integer> types = new ArrayList<Integer>();
+    
+      List<String> titles = new ArrayList<String>(); // 表头
+      // 添加字段名 为CSV第一行数据 表头
+      for (int i = 1; i <= rsmd.getColumnCount(); i++) {
+        String fieldName = rsmd.getColumnLabel(i); // 获取SQL 字段 别名
+        types.add(rsmd.getColumnType(i));
+        titles.add(fieldName);
+      }
+      
+      // 开始  添加数据
+      while (rs.next()) {
+        for (int i = 0; i < types.size(); i++) {
+          if(i > 0 && i < types.size()){
+            bufferedWriter.write(",");
+          }
+          if(rs.getObject(i+1)!=null){
+            switch (types.get(i)) {
+              case Types.DECIMAL:
+                bufferedWriter.write(rs.getBigDecimal(i + 1).doubleValue()+"");
+                break;
+              case Types.INTEGER:
+                bufferedWriter.write(rs.getInt(i + 1));
+                break;
+              case Types.BIGINT:
+                bufferedWriter.write(rs.getLong(i + 1)+"");
+                break;
+              case Types.CHAR:
+              case Types.VARCHAR:
+              case Types.LONGVARCHAR:
+                bufferedWriter.write(rs.getString(i + 1));
+                break;
+              case Types.DATE:
+                bufferedWriter.write(rs.getDate(i + 1)+"");
+                break;
+              case Types.TIMESTAMP:
+                bufferedWriter.write(rs.getTimestamp(i + 1)+"");
+                break;
+              case Types.TIME:
+                bufferedWriter.write(rs.getTime(i + 1)+"");
+                break;
+              case Types.DOUBLE:
+              case Types.REAL:
+                bufferedWriter.write(rs.getDouble(i + 1)+"");
+                break;
+              default:
+                logger.error("type : " + types.get(i) + "  -  " + rs.getObject(i + 1));
+            }
+          }
+          if(i == types.size()-1 ){
+            bufferedWriter.write("\r\n");
+          }
+        }
+      }
+      
+      bufferedWriter.close();//关闭文件流  
+      rs.close();
+      ps.close();
+      conn.close();
+    } catch (SQLException e) {
+      e.printStackTrace();
+    } catch (IOException e) {
+      e.printStackTrace();
+    } finally {
+      if(bufferedWriter != null ){
+        try {
+          bufferedWriter.close();
+        } catch (IOException e) {
+          e.printStackTrace();
+        }
+      }
+      this.release(dbalias,conn, ps, rs);
+    }
+  }
+  
+  *//**
+   * 查询到处数据为 CSV
+   * 
+   * @param conn
+   * @param filePath
+   *//*
+  public void exportCSV_BACK(String dbalias, String filePath , char split, String sql, Object... params) {
+    Connection conn = this.getConnection(dbalias);
+    PreparedStatement ps = null;
+    ResultSet rs = null;
+    
+    try {
+      conn.setReadOnly(true);
+      ps = conn.prepareStatement(sql);
+      this.setPreparedValues(ps, params);
+      rs = ps.executeQuery();
+
+      //确认流的输出文件和编码格式，此过程创建了“test.txt”实例
+      OutputStreamWriter outputWriter = new OutputStreamWriter(new FileOutputStream(filePath),"GBK");
+      
+//      OutputStream out = new FileOutputStream("D:\\demo.txt");//打印到文件。  
+//      OutputStreamWriter osr = new OutputStreamWriter(out);//输出  
+//      BufferedWriter bufw = new BufferedWriter(osr);//缓冲  
+      
+//      CSVWriter writer = new CSVWriter(new FileWriter("yourfile.csv"), ',');  
+      CSVWriter writer = new CSVWriter(outputWriter , split);  
+      
+      writer.writeAll(rs,false);  
+      
+      writer.close();//关闭文件流  
+      rs.close();
+      ps.close();
+      conn.close();
+    } catch (SQLException e) {
+      e.printStackTrace();
+    } catch (IOException e) {
+      e.printStackTrace();
+    } finally {
+      this.release(dbalias,conn, ps, rs);
+    }
+  }
+
+  *//**
+   * 读取office 2007 xlsx
+   * 
+   * @param filePath
+   *//*
+  public void loadExcelFile(String dbalias ,String schema, String tablename, String filePath) {
+    long start = System.currentTimeMillis();
+    Connection conn = this.getConnection(dbalias);
+    PreparedStatement ps = null;
+    try {
+      // 构造 XSSFWorkbook 对象，strPath 传入文件路径
+      Workbook xwb = WorkbookFactory.create(new FileInputStream(filePath));
+      
+      // 获取 schema 
+      if (StringUtil.isEmpty(schema)) {
+//        schema = conn.getCatalog();  
+//        conn.getMetaData().getUserName();
+        schema = getCurrentSchema(null);
+//        schema = getSchema(dbalias);
+      }
+      
+      // 字段类型
+      List<Integer> columnTypes = this.getColumnTypes(conn, schema, tablename);
+
+      // 根据表名 生成 Insert语句
+      // "insert into CBOD_ECCMRAMR values (?, ?, ?, ?, ?, ?, ?,?, ?, ?, ?, ?, ?, ?,?,?,?)"
+      StringBuffer sql;
+      if (StringUtil.isEmpty(schema)) {
+        sql = new StringBuffer("insert into " + tablename + " values (");
+      } else {
+        sql = new StringBuffer("insert into " + schema.trim() + "." + tablename + " values (");
+      }
+      for (int i = 1; i < columnTypes.size(); i++) {
+        sql.append("?,");
+      }
+      sql.append("?)");
+      logger.debug(sql.toString());
+
+      ps = conn.prepareStatement(sql.toString());
+      conn.setAutoCommit(false);
+      int rowCount = 0;
+
+      // 读取第一章表格内容
+      Sheet sheet = xwb.getSheetAt(0);
+      // 循环输出表格中的内容
+
+      for (int i = sheet.getFirstRowNum(); i <= sheet.getLastRowNum(); i++) {
+        Row row = sheet.getRow(i);
+        if (row == null) {
+          continue;
+        }
+
+        List<String> cells = new ArrayList<String>();
+        // 判断空行
+        int cellnullcount = 0;
+        for (int j = row.getFirstCellNum(); j < row.getLastCellNum(); j++) {
+          // 通过 row.getCell(j) 获取单元格内容，
+          String cellobjTmp = ExcelUtil.convertCellToString(row.getCell(j));
+          cells.add(cellobjTmp);
+          // 判断空
+          if (StringUtil.isEmpty(cellobjTmp)) {
+            cellnullcount++;
+          }
+        }
+
+        // 判断 空行
+        if (cellnullcount >= row.getPhysicalNumberOfCells()) {
+          continue;
+        } else {
+          rowCount++;
+        }
+        // 忽略表头
+        if (rowCount > 1) {
+          for (int index = 0; index < cells.size(); index++) {
+            ps.setObject(index + 1, this.castDBType(columnTypes.get(index), cells.get(index)));
+          }
+          
+          ps.addBatch();
+          if ( (rowCount -1) % BATCHCOUNT == 0) {
+            ps.executeBatch();
+            conn.commit();
+          }
+        }
+      }
+
+      // 最后插入不足1w条的数据
+      ps.executeBatch();
+      conn.commit();
+      conn.setAutoCommit(true);
+      long end = System.currentTimeMillis();
+      logger.debug("load into ["+ schema +"." + tablename +  "] Total : [" + (rowCount -1) + "] records, Take [" + (float)(end - start)/1000 + "] seconds . Average : "  + 1000*(rowCount -1)/(end - start) + " records/second"  );
+    } catch (InvalidFormatException e) {
+      e.printStackTrace();
+      System.out.println("请重新保存 Excel ");
+    } catch (SQLException e) {
+      e.printStackTrace();
+    } catch (FileNotFoundException e) {
+      e.printStackTrace();
+    } catch (IOException e) {
+      e.printStackTrace();
+    } finally {
+      this.release(dbalias,conn, ps, null);
+    }
+
+  }
+
+  public Workbook exportExcel(String dbalias , String sql, Object... params) {
+    return this.exportExcel(dbalias ,null, "0", sql, params);
+  }
+
+  public Workbook exportExcel(String dbalias , String sheetTitle, String sql, Object... params) {
+    return this.exportExcel(dbalias, null, sheetTitle, sql, params);
+  }
+
+  *//**
+   * 查询到处数据为Excel
+   * 
+   * @param conn
+   * @param filePath
+   *//*
+  public Workbook exportExcel(String dbalias,Workbook workbook, String sheetTitle, String sql, Object... params) {
+    Connection conn = this.getConnection(dbalias);
+    PreparedStatement ps = null;
+    ResultSet rs = null;
+
+    // 创建一个Excel 2007文件
+    if (workbook == null) {
+      workbook = new SXSSFWorkbook();
+    }
+    // 创建一个Excel的Sheet
+    Sheet sheet = workbook.createSheet(sheetTitle);
+
+    // 样式 保留两位小数格式
+    CellStyle cellStyle = workbook.createCellStyle();
+    cellStyle.setDataFormat(HSSFDataFormat.getBuiltinFormat("0.00"));
+
+    // 日期样式
+    DataFormat format = workbook.createDataFormat();
+
+    CellStyle dateStyle = workbook.createCellStyle();
+    dateStyle.setDataFormat(format.getFormat(DateStyle.SHORTDATEFORMAT.getValue()));
+
+    CellStyle timeStampStyle = workbook.createCellStyle();
+    timeStampStyle.setDataFormat(format.getFormat(DateStyle.DATETIMEFORMAT.getValue()));
+    
+    CellStyle timeStyle = workbook.createCellStyle();
+    timeStyle.setDataFormat(format.getFormat(DateStyle.TIMEFORMAT.getValue()));
+
+    try {
+      conn.setReadOnly(true);
+      ps = conn.prepareStatement(sql);
+      this.setPreparedValues(ps, params);
+      rs = ps.executeQuery();
+
+      ResultSetMetaData rsmd = rs.getMetaData();
+      // 数据字段 类型
+      List<Integer> types = new ArrayList<Integer>();
+
+      // 添加字段名 为Excel第一行数据 表头
+      Row sheetRow = sheet.createRow(0);
+      for (int i = 1; i <= rsmd.getColumnCount(); i++) {
+        String fieldName = rsmd.getColumnLabel(i); // 获取SQL 字段 别名
+        types.add(rsmd.getColumnType(i));
+        Cell cell = sheetRow.createCell(i - 1);
+        cell.setCellValue(fieldName);
+      }
+
+      // 开始 转行 添加数据
+      int rowIndex = 1;
+      while (rs.next()) {
+        sheet.autoSizeColumn(rowIndex + 1, true);
+        sheetRow = sheet.createRow(rowIndex++);
+        for (int i = 0; i < types.size(); i++) {
+          Cell cell = sheetRow.createCell(i);
+          if (rs.getObject(i + 1) == null) {
+            continue ;
+          }
+          switch (types.get(i)) {
+            case Types.DECIMAL:
+              cell.setCellValue(rs.getBigDecimal(i + 1).doubleValue());
+              break;
+            case Types.INTEGER:
+              cell.setCellValue(rs.getInt(i + 1));
+              break;
+            case Types.BIGINT:
+              cell.setCellValue(rs.getLong(i + 1));
+              break;
+            case Types.CHAR:
+            case Types.VARCHAR:
+            case Types.LONGVARCHAR:
+              cell.setCellValue(rs.getString(i + 1));
+              break;
+            case Types.DATE:
+              cell.setCellStyle(dateStyle);
+              cell.setCellValue(rs.getDate(i + 1));
+              break;
+            case Types.TIMESTAMP:
+              cell.setCellStyle(timeStampStyle);
+              cell.setCellValue(rs.getTimestamp(i + 1));
+              break;
+            case Types.TIME:
+              cell.setCellStyle(timeStyle);
+              cell.setCellValue(DateUtil.formatDate(rs.getTime(i + 1), DateStyle.TIMEFORMAT));
+              break;
+            case Types.DOUBLE:
+            case Types.REAL:
+              cell.setCellValue(rs.getDouble(i + 1));
+              break;
+            default:
+              logger.error("type : " + types.get(i) + "  -  " + rs.getObject(i + 1));
+          }
+        }
+      }
+      rs.close();
+      ps.close();
+      conn.close();
+    } catch (SQLException e) {
+      e.printStackTrace();
+    } finally {
+      this.release(dbalias,conn, ps, rs);
+    }
+    return workbook;
+  }
+
+}
+*/

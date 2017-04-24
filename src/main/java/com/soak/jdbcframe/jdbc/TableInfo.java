@@ -1,1 +1,0 @@
-package com.soak.jdbcframe.jdbc;public class TableInfo {    private String tableName;// 表名    }

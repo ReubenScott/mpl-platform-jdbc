@@ -7,7 +7,7 @@ import java.util.Hashtable;
 import org.junit.Before;
 import org.junit.Test;
 
-import com.soak.jdbcframe.xml.XmlSqlMapper;
+import com.soak.framework.xml.XmlSqlMapper;
 
 
 public class XmlSqlMapperTest {

@@ -17,13 +17,13 @@
 
 
   <dependencies>
-    
+
     <!--  配置项目依赖   -->
     <dependency>
       <groupId>com.soak</groupId>
       <artifactId>core</artifactId>
     </dependency>
-    
+
 
 
     <!-- DB Driver Start  -->
@@ -31,7 +31,7 @@
       <groupId>db2jcc</groupId>
       <artifactId>db2jcc</artifactId>
     </dependency>
-    
+
     <dependency>
       <groupId>mysql</groupId>
       <artifactId>mysql-connector-java</artifactId>
