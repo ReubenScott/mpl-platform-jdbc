@@ -30,21 +30,18 @@ public class JdbcDaoImp implements IBasicDao {
     this.jdbc = jdbcHandler;
   }
 
-  
-  
   public int execute(String sql, Object... params) {
     return jdbc.executeUpdate(null, sql, params);
   }
-  
-  
+
   public <T> List<T> querySampleList(Class<T> sample, String sql, Object... params) {
     return jdbc.querySampleList(sample, sql, params);
   }
-  
+
   public List<List> queryForList(String sql, Object... params) {
     return jdbc.queryForList(sql, params);
   }
-  
+
   /**
    * 
    */
@@ -66,7 +63,7 @@ public class JdbcDaoImp implements IBasicDao {
   public HashMap queryOneAsMap(String sql, Object... params) {
     return jdbc.queryOneAsMap(sql, params);
   }
-  
+
   public HashMap queryOneAsMap(String dbalias, String sql, Object... params) {
     return jdbc.queryOneAsMap(dbalias, sql, params);
   }
@@ -75,29 +72,32 @@ public class JdbcDaoImp implements IBasicDao {
     jdbc.exportCSV(filePath, encoding, split, sql, params);
   }
 
-  public boolean saveAnnotatedBean(Object annoBean) {
+  public boolean saveAnnotatedBean(Object... annoBean) {
     return jdbc.saveAnnotatedBean(annoBean);
   }
-  
+
   public boolean saveAnnotatedBean(List<?> annoBeans) {
     return jdbc.saveAnnotatedBean(BeanUtil.listToArray(annoBeans));
   }
-  
+
   public boolean truncateTable(String schema, String tablename) {
     return jdbc.truncateTable(schema, tablename);
   }
   
+  public  boolean wipeTableData(Class<? extends Object> entityClass){
+    return jdbc.truncateAnnotatedTable(entityClass);
+  }
+
   public void loadExcelFile(String tablename, String filePath) {
     jdbc.loadExcelFile(null, tablename, filePath);
   }
-  
+
   public List callProcedure(String procedureName, Object[] in, int... outTypes) {
     return jdbc.callProcedure(procedureName, in, outTypes);
   }
-  
 
-  public boolean deleteAnnotatedEntity(Object annoEntity){
+  public boolean deleteAnnotatedEntity(Object annoEntity) {
     return jdbc.deleteAnnotatedBean(annoEntity);
   }
-  
+
 }

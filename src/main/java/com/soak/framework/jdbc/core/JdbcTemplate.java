@@ -63,10 +63,12 @@ import com.soak.common.io.PropertyReader;
 import com.soak.common.util.BeanUtil;
 import com.soak.common.util.StringUtil;
 import com.soak.framework.jdbc.Restrictions;
-import com.soak.framework.jdbc.context.DBParameter;
-import com.soak.framework.orm.Column;
-import com.soak.framework.orm.Table;
+import com.soak.framework.jdbc.context.JdbcConfig;
+//import com.soak.framework.orm.Column;
+//import com.soak.framework.orm.Table;
 
+import javax.persistence.Column;
+import javax.persistence.Table;
 import javax.sql.DataSource;
 import org.apache.commons.dbcp.BasicDataSource;
 
@@ -79,7 +81,7 @@ public abstract class JdbcTemplate {
 
   private volatile static JdbcTemplate instance;
   private static DataSource dataSource;
-  private final static DBParameter dbParameter = new DBParameter();
+  private final static JdbcConfig dbParameter = new JdbcConfig();
   // Jdbc Template mapper
   private static Map<String, Class<? extends JdbcTemplate>> mapper = new HashMap<String, Class<? extends JdbcTemplate>>();
 
@@ -88,57 +90,6 @@ public abstract class JdbcTemplate {
   static {
     mapper.put("DB2", DB2Template.class); // DB2/LINUXX8664
     mapper.put("PostgreSQL", PostgreSQLTemplate.class);
-  }
-
-  // 根据数据库类型，创建相应的JdbcTemplate
-  public synchronized static JdbcTemplate getInstance2() {
-    if (instance == null) {
-      Properties ps = PropertyReader.getInstance().read("jdbc.properties");
-      String drivername = ps.getProperty("jdbc.driverClassName");
-      String url = ps.getProperty("jdbc.url");
-      String username = ps.getProperty("jdbc.username");
-      String password = ps.getProperty("jdbc.password");
-
-      dbParameter.setDriverclass(ps.getProperty("jdbc.driverClassName"));
-      dbParameter.setUrl(ps.getProperty("jdbc.url"));
-      dbParameter.setUsername(ps.getProperty("jdbc.username"));
-      dbParameter.setPassword(ps.getProperty("jdbc.password"));
-
-      BasicDataSource dbcpDataSource = new BasicDataSource();
-      dbcpDataSource.setDriverClassName(drivername);
-      dbcpDataSource.setUrl(url);
-      dbcpDataSource.setUsername(username);
-      dbcpDataSource.setPassword(password);
-
-      dbcpDataSource.setInitialSize(Integer.parseInt(ps.getProperty("pool.initialSize")));
-      dbcpDataSource.setMaxActive(Integer.parseInt(ps.getProperty("pool.maxActive")));
-      dbcpDataSource.setMaxIdle(Integer.parseInt(ps.getProperty("pool.maxIdle")));
-      dataSource = dbcpDataSource;
-
-      Connection connection = null;
-      String productName = null;
-      try {
-        Class.forName(dbParameter.getDriverclass());
-        connection = DriverManager.getConnection(dbParameter.getUrl(), dbParameter.getUsername(), dbParameter.getPassword());
-
-        DatabaseMetaData metaData = connection.getMetaData();
-        productName = metaData.getDatabaseProductName();
-        DateBaseType dbType = DateBaseType.getDateBaseType(productName);
-        instance = mapper.get(dbType.getValue()).newInstance(); // 创建对象
-      } catch (Exception e) {
-        e.printStackTrace();
-        throw new RuntimeException("无法创建【" + productName + "】对应的JDBC模版");
-      } finally {
-        if (connection != null) {
-          try {
-            connection.close();
-          } catch (SQLException e) {
-            e.printStackTrace();
-          }
-        }
-      }
-    }
-    return instance;
   }
 
   // 根据数据库类型，创建相应的JdbcTemplate
@@ -164,8 +115,14 @@ public abstract class JdbcTemplate {
         productName = metaData.getDatabaseProductName();
         DateBaseType dbType = DateBaseType.getDateBaseType(productName);
         instance = mapper.get(dbType.getValue()).newInstance(); // 创建对象
+        
+        
+        // TODO 初始化连接池    目前测试出 有些  连接池版本不稳定  
+        // initPool();
+        
       } catch (Exception e) {
         e.printStackTrace();
+        logger.error("getInstance() Exception: {}", e.toString());
         throw new RuntimeException("无法创建【" + productName + "】对应的JDBC模版");
       } finally {
         if (connection != null) {
@@ -178,6 +135,23 @@ public abstract class JdbcTemplate {
       }
     }
     return instance;
+  }
+  
+  /**
+   * 
+   * 初始化数据库连接池
+   */
+  private static void initPool(JdbcConfig dbParameter){
+    BasicDataSource dbcpDataSource = new BasicDataSource();
+    dbcpDataSource.setDriverClassName(dbParameter.getDriverclass());
+    dbcpDataSource.setUrl(dbParameter.getUrl());
+    dbcpDataSource.setUsername(dbParameter.getUsername());
+    dbcpDataSource.setPassword(dbParameter.getPassword());
+
+//    dbcpDataSource.setInitialSize(Integer.parseInt(ps.getProperty("pool.initialSize")));
+//    dbcpDataSource.setMaxActive(Integer.parseInt(ps.getProperty("pool.maxActive")));
+//    dbcpDataSource.setMaxIdle(Integer.parseInt(ps.getProperty("pool.maxIdle")));
+    dataSource = dbcpDataSource;
   }
 
   /**
@@ -193,6 +167,8 @@ public abstract class JdbcTemplate {
       // connection.setCatalog(catalog)
     } catch (SQLException e) {
       e.printStackTrace();
+      logger.error("getConnection() Exception: {}", e.toString());
+      logger.error("getConnection() Exception: {}", e.getNextException().toString());
     } finally {
       // checkIn(connection);
     }
@@ -493,13 +469,6 @@ public abstract class JdbcTemplate {
   
 
   /***
-   * 
-   * 清空表
-   */
-  public abstract boolean truncateAnnotatedTable(Class<? extends Object> annoClass);
-  
-
-  /***
    * 判断数据库 表 是否存在
    * 
    * @param schema
@@ -548,6 +517,24 @@ public abstract class JdbcTemplate {
     }
     return !isTableExits(schema, tableName);
   }
+  
+  
+  /**
+   * 清空表 
+   * @param entityClass
+   * @return
+   */
+  public  boolean truncateAnnotatedTable(Class<? extends Object> entityClass){
+    if (entityClass.isAnnotationPresent(Table.class)) { // 如果类映射了表
+      Table table = (Table) entityClass.getAnnotation(Table.class);
+      String schema = table.schema();
+      String tablename = table.name();  
+      return truncateTable(schema, tablename);
+    }
+    
+    return false ;
+  }
+  
 
   /**
    * 
@@ -678,7 +665,8 @@ public abstract class JdbcTemplate {
         Table table = stuClass.getAnnotation(Table.class);
         schema = table.schema().trim(); // 获得schema
         tablename = table.name().trim(); // 获得表名
-        String[] pk = table.pk(); // 主键
+        //TODO  主键
+        String[] pk =  null ; //table.pk(); // 主键
 
         // 拼接 SQL 语句
         if (StringUtil.isEmpty(schema)) {
@@ -866,6 +854,8 @@ public abstract class JdbcTemplate {
       result = true;
     } catch (SQLException e) {
       e.printStackTrace();
+      logger.error("executeBatch Exception: {}", e.toString());
+      logger.error("executeBatch Exception: {}", e.getNextException().toString());
       try {
         connection.rollback();
       } catch (SQLException ex) {
@@ -923,6 +913,9 @@ public abstract class JdbcTemplate {
               annoFields.add(field);
               Column col = field.getAnnotation(Column.class); // 获取列注解
               String columnName = col.name(); // 数据库映射字段
+              if(StringUtil.isEmpty(columnName)){  // name 未指定 ，设置默认 为 字段名
+                columnName =  field.getName() ;
+              }
               if (columns.size() == 0) {
                 values.append("?");
               } else {

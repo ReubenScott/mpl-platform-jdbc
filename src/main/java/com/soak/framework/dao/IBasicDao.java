@@ -25,7 +25,7 @@ public interface IBasicDao {
   
   public void exportCSV(String filePath , String encoding, char split, String sql, Object... params);
   
-  public boolean saveAnnotatedBean(Object annoBean);
+  public boolean saveAnnotatedBean(Object... annoBean);
   
   public boolean saveAnnotatedBean(List<?> annoBeans);
   

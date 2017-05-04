@@ -1,11 +1,5 @@
 package com.soak.framework.jdbc.core;
 
-import java.io.BufferedReader;
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
-import java.io.IOException;
-import java.io.InputStreamReader;
-import java.io.UnsupportedEncodingException;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -22,12 +16,13 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.Vector;
-import com.soak.common.io.IOHandler;
+
+import javax.persistence.Column;
+import javax.persistence.Table;
+
 import com.soak.common.util.BeanUtil;
 import com.soak.common.util.StringUtil;
 import com.soak.framework.jdbc.Restrictions;
-import com.soak.framework.orm.Column;
-import com.soak.framework.orm.Table;
 
 public class DB2Template extends JdbcTemplate {
 
@@ -712,16 +707,6 @@ public class DB2Template extends JdbcTemplate {
     return result;
   }
 
-  /***
-   * 
-   * 清空表
-   */
-  //TODO
-  public boolean truncateAnnotatedTable(Class annoClass){
-    
-    return false ;
-  }
-  
   
 
 }

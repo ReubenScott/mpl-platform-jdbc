@@ -13,7 +13,7 @@ import javax.naming.Context;
 import javax.naming.InitialContext;
 import javax.sql.DataSource;
 
-import com.soak.framework.jdbc.context.DBParameter;
+import com.soak.framework.jdbc.context.JdbcConfig;
 import com.soak.framework.jdbc.core.JdbcTemplate;
 import com.soak.framework.jdbc.core.PostgreSQLTemplate;
 
@@ -99,7 +99,7 @@ public final class SimpleDataSource  {
     return conn;
   }
 
-  public Connection getConnection(DBParameter dbParameter) {
+  public Connection getConnection(JdbcConfig dbParameter) {
     Connection conn = null;
     if (threadLocal.get() == null) {
       try {

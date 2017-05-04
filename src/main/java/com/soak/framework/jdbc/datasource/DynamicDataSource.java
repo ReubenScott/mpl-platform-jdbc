@@ -28,7 +28,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.soak.common.util.StringUtil;
-import com.soak.framework.jdbc.context.DBParameter;
+import com.soak.framework.jdbc.context.JdbcConfig;
 
 @SuppressWarnings("unchecked")
 public class DynamicDataSource {
@@ -37,7 +37,7 @@ public class DynamicDataSource {
 
   private volatile static DynamicDataSource dbSource;
 
-  private final Map<String, DBParameter> jdbcConfigMap = new HashMap<String, DBParameter>();
+  private final Map<String, JdbcConfig> jdbcConfigMap = new HashMap<String, JdbcConfig>();
 
   private static String defaultDBalias;
 
@@ -95,7 +95,7 @@ public class DynamicDataSource {
         String user = foo.elementText("username").trim();
         String password = foo.elementText("password").trim();
 
-        DBParameter jdbcConfig = new DBParameter();
+        JdbcConfig jdbcConfig = new JdbcConfig();
         jdbcConfig.setDriverclass(driverName);
         jdbcConfig.setUrl(url);
         jdbcConfig.setUsername(user);
@@ -234,7 +234,7 @@ public class DynamicDataSource {
     if (StringUtil.isEmpty(dbalias)) {
       dbalias = defaultDBalias;
     }
-    DBParameter dbconf = jdbcConfigMap.get(dbalias);
+    JdbcConfig dbconf = jdbcConfigMap.get(dbalias);
     if(dbconf!=null){
       String driveClassName = dbconf.getDriverclass();
       String url = dbconf.getUrl();
@@ -262,7 +262,7 @@ public class DynamicDataSource {
    * @return
    */
   public Connection getConnection(String alias) {
-    DBParameter config = jdbcConfigMap.get(alias);
+    JdbcConfig config = jdbcConfigMap.get(alias);
     String driveClassName = config.getDriverclass();
     String url = config.getUrl();
     String username = config.getUsername();

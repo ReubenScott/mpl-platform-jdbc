@@ -40,6 +40,11 @@
 
     <!-- DB Driver End  -->
 
+    <!-- 注解  -->
+    <dependency>
+      <groupId>javax.persistence</groupId>
+      <artifactId>persistence-api</artifactId>
+    </dependency>
 
     <!-- Json Start  -->
     <dependency>
