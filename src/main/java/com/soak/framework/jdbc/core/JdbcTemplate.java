@@ -63,8 +63,7 @@ import com.soak.common.io.PropertyReader;
 import com.soak.common.util.BeanUtil;
 import com.soak.common.util.StringUtil;
 import com.soak.framework.jdbc.Restrictions;
-import com.soak.framework.jdbc.context.JdbcConfig;
-//import com.soak.framework.orm.Column;
+import com.soak.framework.jdbc.context.JdbcConfig; //import com.soak.framework.orm.Column;
 //import com.soak.framework.orm.Table;
 
 import javax.persistence.Column;
@@ -115,11 +114,10 @@ public abstract class JdbcTemplate {
         productName = metaData.getDatabaseProductName();
         DateBaseType dbType = DateBaseType.getDateBaseType(productName);
         instance = mapper.get(dbType.getValue()).newInstance(); // 创建对象
-        
-        
-        // TODO 初始化连接池    目前测试出 有些  连接池版本不稳定  
+
+        // TODO 初始化连接池 目前测试出 有些 连接池版本不稳定
         // initPool();
-        
+
       } catch (Exception e) {
         e.printStackTrace();
         logger.error("getInstance() Exception: {}", e.toString());
@@ -136,21 +134,21 @@ public abstract class JdbcTemplate {
     }
     return instance;
   }
-  
+
   /**
    * 
    * 初始化数据库连接池
    */
-  private static void initPool(JdbcConfig dbParameter){
+  private static void initPool(JdbcConfig dbParameter) {
     BasicDataSource dbcpDataSource = new BasicDataSource();
     dbcpDataSource.setDriverClassName(dbParameter.getDriverclass());
     dbcpDataSource.setUrl(dbParameter.getUrl());
     dbcpDataSource.setUsername(dbParameter.getUsername());
     dbcpDataSource.setPassword(dbParameter.getPassword());
 
-//    dbcpDataSource.setInitialSize(Integer.parseInt(ps.getProperty("pool.initialSize")));
-//    dbcpDataSource.setMaxActive(Integer.parseInt(ps.getProperty("pool.maxActive")));
-//    dbcpDataSource.setMaxIdle(Integer.parseInt(ps.getProperty("pool.maxIdle")));
+    // dbcpDataSource.setInitialSize(Integer.parseInt(ps.getProperty("pool.initialSize")));
+    // dbcpDataSource.setMaxActive(Integer.parseInt(ps.getProperty("pool.maxActive")));
+    // dbcpDataSource.setMaxIdle(Integer.parseInt(ps.getProperty("pool.maxIdle")));
     dataSource = dbcpDataSource;
   }
 
@@ -289,7 +287,6 @@ public abstract class JdbcTemplate {
 
     }
   }
-  
 
   /**
    * 设置参数
@@ -301,7 +298,7 @@ public abstract class JdbcTemplate {
     try {
       if (params != null && params.size() > 0) {
         for (int i = 0; i < params.size(); i++) {
-//          ps.setObject(i + 1, params.get(i));
+          // ps.setObject(i + 1, params.get(i));
           ps.setObject(i + 1, castJavatoDBValue(params.get(i)));
         }
       }
@@ -309,7 +306,6 @@ public abstract class JdbcTemplate {
       e.printStackTrace();
     }
   }
-
 
   /**
    * 设置参数
@@ -321,30 +317,28 @@ public abstract class JdbcTemplate {
     try {
       if (params != null && params.length > 0) {
         for (int i = 0; i < params.length; i++) {
-//          ps.setObject(i + 1, params[i]);
-          ps.setObject(i + 1, castJavatoDBValue( params[i]));
+          // ps.setObject(i + 1, params[i]);
+          ps.setObject(i + 1, castJavatoDBValue(params[i]));
         }
       }
     } catch (SQLException e) {
       e.printStackTrace();
     }
   }
-  
 
   /**
-   * Java 转数据库 类型 
-   *  
+   * Java 转数据库 类型
+   * 
    * @param dbColumnType
    * @param value
    * @return
    */
-  private Object castJavatoDBValue(Object javaObj){
+  private Object castJavatoDBValue(Object javaObj) {
     if (javaObj instanceof java.util.Date) {
-      javaObj =  new java.sql.Date(((java.util.Date)javaObj).getTime());
-    } 
-    return javaObj ;
+      javaObj = new java.sql.Date(((java.util.Date) javaObj).getTime());
+    }
+    return javaObj;
   }
-  
 
   public static void setParameters(PreparedStatement pstmt, List parameters) throws SQLException {
     for (int i = 1, size = parameters.size(); i <= size; i++) {
@@ -384,8 +378,6 @@ public abstract class JdbcTemplate {
       }
     }
   }
-
-  
 
   /**
    * 根据数据库 字段类型 返回值
@@ -466,7 +458,6 @@ public abstract class JdbcTemplate {
    * 清空表
    */
   public abstract boolean truncateTable(String schema, String tablename);
-  
 
   /***
    * 判断数据库 表 是否存在
@@ -517,24 +508,23 @@ public abstract class JdbcTemplate {
     }
     return !isTableExits(schema, tableName);
   }
-  
-  
+
   /**
-   * 清空表 
+   * 清空表
+   * 
    * @param entityClass
    * @return
    */
-  public  boolean truncateAnnotatedTable(Class<? extends Object> entityClass){
+  public boolean truncateAnnotatedTable(Class<? extends Object> entityClass) {
     if (entityClass.isAnnotationPresent(Table.class)) { // 如果类映射了表
       Table table = (Table) entityClass.getAnnotation(Table.class);
       String schema = table.schema();
-      String tablename = table.name();  
+      String tablename = table.name();
       return truncateTable(schema, tablename);
     }
-    
-    return false ;
+
+    return false;
   }
-  
 
   /**
    * 
@@ -640,33 +630,32 @@ public abstract class JdbcTemplate {
   /**
    * 通过实体类生成 删除 语句
    * 
-   * @param annoBean
+   * @param annotatedSample
    *          <a href="http://my.oschina.net/u/556800" class="referer"
    *          target="_blank">@return</a>
    * @throws IllegalArgumentException
    * @throws IllegalAccessException
    * @throws NumException
    */
-  public boolean deleteAnnotatedBean(Object annoBean) {
+  public boolean deleteAnnotatedBean(Object annotatedSample , Restrictions... restrictions) {
     List<String> columns = new ArrayList<String>();
-    List<Object[]> paramList = new ArrayList<Object[]>();
+    List<String> fieldNames = new ArrayList<String>();
+    List<Object> params = new ArrayList<Object>();
     String schema = null;
     String tablename = null;
-    Class<? extends Object> stuClass = null;
     List<Field> annoFields = new ArrayList<Field>();
 
     // 拼接 SQL 语句
     StringBuffer sql = new StringBuffer("delete from ");
+    StringBuilder condition = new StringBuilder(" where 1=1 ");
 
     // 获取类的class
-    stuClass = annoBean.getClass();
-    if (annoBean != null) {
+    Class<? extends Object> stuClass = annotatedSample.getClass();
+    if (annotatedSample != null) {
       if (stuClass.isAnnotationPresent(Table.class)) { // 获得类是否有注解
         Table table = stuClass.getAnnotation(Table.class);
         schema = table.schema().trim(); // 获得schema
         tablename = table.name().trim(); // 获得表名
-        //TODO  主键
-        String[] pk =  null ; //table.pk(); // 主键
 
         // 拼接 SQL 语句
         if (StringUtil.isEmpty(schema)) {
@@ -678,58 +667,49 @@ public abstract class JdbcTemplate {
         Field[] fields = stuClass.getDeclaredFields();// 获得反射对象集合
         for (Field field : fields) {// 循环组装 field : fields
           if (field.isAnnotationPresent(Column.class)) {
-            annoFields.add(field);
             Column col = field.getAnnotation(Column.class); // 获取列注解
             String columnName = col.name(); // 数据库映射字段
-
-            Object[] params = new Object[pk.length]; // SQL 参数值
-            for (int i = 0; i < pk.length; i++) {// 循环组装 field : fields
-              String p = pk[i];
-              if (p.equals(columnName)) {
-                if (columns.size() == 0) {
-                  sql.append(" where " + columnName + " = ?");
-                } else {
-                  sql.append(" and " + columnName + " = ?");
-                }
-                columns.add(columnName);
-              }
-
-              String fieldName = field.getName(); // 获取字段名称
-              String methodName = "get" + fieldName.substring(0, 1).toUpperCase() + fieldName.substring(1);// 获取字段的get方法
-              try {
-                // get到field的值
-                Method method = stuClass.getMethod(methodName);
-                params[i] = method.invoke(annoBean);
-              } catch (IllegalArgumentException e) {
-                e.printStackTrace();
-              } catch (IllegalAccessException e) {
-                e.printStackTrace();
-              } catch (SecurityException e) {
-                e.printStackTrace();
-              } catch (NoSuchMethodException e) {
-                e.printStackTrace();
-              } catch (InvocationTargetException e) {
-                e.printStackTrace();
-              }
-              paramList.add(params);
-
+            if (StringUtil.isEmpty(columnName)) { // name 未指定 ，设置默认 为 字段名
+              columnName = field.getName();
             }
-            // todo 主键 误写 问题 长度
-            if (pk.length == columns.size()) {
+            columns.add(columnName);
+            String fieldName = field.getName(); // 获取字段名称
+            fieldNames.add(fieldName);
+            String methodName = "get" + fieldName.substring(0, 1).toUpperCase() + fieldName.substring(1);// 获取字段的get方法
 
-            } else {
-              // TODO 主键注释输入错误
-              logger.error("主键注释输入错误: " + sql.toString());
-              return false;
+            try {
+              // get到field的值
+              Method method = stuClass.getMethod(methodName);
+              Object fieldValue = method.invoke(annotatedSample);
+              // params[i] = method.invoke(annotatedSample);
+              // 空字段跳过拼接过程。。。 
+              if (fieldValue != null) {
+                condition.append(" and " + columnName + "=" + "?");
+                params.add(fieldValue);
+              } else { // 如果没有值，不拼接
+                condition.append(" and " + columnName + " IS NULL ");
+              }
+            } catch (IllegalArgumentException e) {
+              e.printStackTrace();
+            } catch (IllegalAccessException e) {
+              e.printStackTrace();
+            } catch (SecurityException e) {
+              e.printStackTrace();
+            } catch (NoSuchMethodException e) {
+              e.printStackTrace();
+            } catch (InvocationTargetException e) {
+              e.printStackTrace();
             }
+
           }
         }
+        sql.append(condition);
       }
     }
 
     logger.debug(sql.toString());
 
-    return executeBatch(sql.toString(), paramList);
+    return execute(sql.toString(), params);
   }
 
   /***
@@ -913,8 +893,8 @@ public abstract class JdbcTemplate {
               annoFields.add(field);
               Column col = field.getAnnotation(Column.class); // 获取列注解
               String columnName = col.name(); // 数据库映射字段
-              if(StringUtil.isEmpty(columnName)){  // name 未指定 ，设置默认 为 字段名
-                columnName =  field.getName() ;
+              if (StringUtil.isEmpty(columnName)) { // name 未指定 ，设置默认 为 字段名
+                columnName = field.getName();
               }
               if (columns.size() == 0) {
                 values.append("?");
@@ -2045,12 +2025,12 @@ public abstract class JdbcTemplate {
     int loadCount = 0; // 批量计数
     try {
       // TODO 不靠谱
-      String encode = IOHandler.getCharSetEncoding(filePath); 
-      if(!encode.equals(CharSetType.GBK.getValue())){
-        logger.warn("IOHandler get File : {}  character set  : {}  incorrect", filePath , encode  );
-        encode = CharSetType.GBK.getValue() ; //
+      String encode = IOHandler.getCharSetEncoding(filePath);
+      if (!encode.equals(CharSetType.GBK.getValue())) {
+        logger.warn("IOHandler get File : {}  character set  : {}  incorrect", filePath, encode);
+        encode = CharSetType.GBK.getValue(); //
       }
-  
+
       reader = new BufferedReader(new InputStreamReader(new FileInputStream(filePath), encode));
       // 获取字段类型
       List<Integer> columnTypes = this.getColumnTypes(schema, tablename);
