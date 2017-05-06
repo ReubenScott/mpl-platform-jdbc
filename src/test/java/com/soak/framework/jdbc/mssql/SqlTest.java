@@ -6,7 +6,6 @@ import java.util.List;
 
 import junit.framework.TestCase;
 
-import com.soak.framework.jdbc.TestUtil;
 import com.soak.framework.jdbc.core.RowMapper;
 
 /**
@@ -30,11 +29,11 @@ public class SqlTest extends TestCase {
 
   public void test0() {
     String sql = "select 'syj1' as id union all select 'syj2' as id";
-    List list = TestUtil.getMssqlJt().executeQuery(sql);
-    List list1 = TestUtil.getMssqlJt().executeQuery(sql, new RowMapper() {
-      public Object mapRow(ResultSet rs, int rowNum) throws SQLException {
-        return rs.getObject(1);
-      }
-    });
+//    List list = TestUtil.getMssqlJt().executeQuery(sql);
+//    List list1 = TestUtil.getMssqlJt().executeQuery(sql, new RowMapper() {
+//      public Object mapRow(ResultSet rs, int rowNum) throws SQLException {
+//        return rs.getObject(1);
+//      }
+//    });
   }
 }
