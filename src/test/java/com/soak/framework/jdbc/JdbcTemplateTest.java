@@ -18,7 +18,7 @@ public class JdbcTemplateTest {
   JdbcTemplate jdbcHandler;
 
   @Before
-  public void setUp() throws Exception {
+  public void setUp() {
     jdbcHandler = jdbcHandler.getInstance();
   }
 
@@ -42,7 +42,7 @@ public class JdbcTemplateTest {
    * 
    * @param filePath
    */
-  @Test
+//  @Test
   public void testloadPunchRecord() {
     String dirPath= "E:/考勤/刷卡记录/";
     File dir = new File(dirPath);
@@ -64,29 +64,28 @@ public class JdbcTemplateTest {
     
   }
 
-//   @Test
+  @Test
   public void testLoadDelFile() {
 //    jdbcHandler.loadDelFile("edw","CBOD_GLGLGHTD", "E:/ftpdata/P_063_CBOD_GLGLGHTD_20150701.del", (char) 29);
-//    jdbcHandler.loadDelFile("edw","IND_REPORT_DATA", "E:/ftpdata/P_063_CMIS_IND_REPORT_DATA_20150708.del", (char)29 );
+    jdbcHandler.loadDelFile("edw","CMIS_IND_INFO", "E:/ftpdata/P_063_CMIS_IND_INFO_20170413.del", (char)29 );
+//    jdbcHandler.loadDelFile("sche","qd2", "D:/20170509/个人存款20161231/qd1.del", '|');
   }
 
 //  @Test
   public void testLoadCVS() {
 //    jdbcHandler.loadCsvFile("EDW","YKJD_CUST_ENT", "D:/home/20160318/CUST_ENT.del", (char) 44);
-    jdbcHandler.loadCsvFile("etl","edw_tabdellist", "E:/启东农商银行/二期/ETL_92/init/data/ETL.EDW_TABDELLIST.del", (char)44 );
-//    jdbcHandler.loadCsvFile("YKJD_CUST_ENT", "D:/home/20160318/CUST_ENT.del", ',');
+//    jdbcHandler.loadCsvFile("etl","edw_tabdellist", "E:/启东农商银行/二期/ETL_92/init/data/ETL.EDW_TABDELLIST.del", (char)44 );
+
+    jdbcHandler.loadCsvFile("sche","kh", "D:/20170509/启东同名账户.csv");
+    
+//    jdbcHandler.loadCsvFile("sche","qd1", "D:/20170509/个人存款20161231/qd2.del", '|');
+//    jdbcHandler.loadCsvFile("sche","qd1", "D:/20170509/个人存款20161231/qd3.del", '|');
   }
 
 
-//   @Test
+//  @Test
   public void testLoadExcelFile() {
-    // Date date1 = new Date();//获取当前时间
-    // SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
-    // String str = sdf.format(date1);//时间存储为字符串
-    // System.out.println(str);
-    // Timestamp.valueOf(str);//转换时间字符串为Timestamp
-    // System.out.println(Timestamp.valueOf(str));//输出结果
-    jdbcHandler.loadExcelFile("","attendance_record", "E:/考勤/打卡记录.xlsx");
+    jdbcHandler.loadExcelFile("sche","qd1", "D:/20170509/test1.xlsx");
     // etlJobImpl.loadExcelFile("attendance_record", "E:/考勤/详细刷卡记录2016年2月份.xls");
   }
   

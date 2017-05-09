@@ -1990,6 +1990,7 @@ public abstract class JdbcTemplate {
       System.out.println("请重新保存 Excel ");
     } catch (SQLException e) {
       e.printStackTrace();
+      e.getNextException().printStackTrace();
     } catch (FileNotFoundException e) {
       e.printStackTrace();
     } catch (IOException e) {
@@ -2055,7 +2056,8 @@ public abstract class JdbcTemplate {
 
       String line;
       while ((line = reader.readLine()) != null) {
-        String[] lineData = line.split(String.valueOf(split));
+//        TODO 待验证
+        String[] lineData = line.split(String.valueOf("\\"+split)); 
         int dataNum = lineData.length; // 数据文件 字段数
         for (int i = 0; i < cloumnCount; i++) {
           try {
@@ -2207,7 +2209,7 @@ public abstract class JdbcTemplate {
       e.printStackTrace();
     } catch (SQLException e) {
       e.printStackTrace();
-      logger.error(e.getMessage());
+      e.getNextException().printStackTrace();
     } finally {
       try {
         this.release(connection, ps, null);
