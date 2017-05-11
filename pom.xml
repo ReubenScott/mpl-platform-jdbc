@@ -38,6 +38,12 @@
       <type>jar</type>
     </dependency>
 
+    <!-- PostgreSQL -->
+    <dependency>
+      <groupId>postgresql</groupId>
+      <artifactId>postgresql</artifactId>
+    </dependency>
+
     <!-- DB Driver End  -->
 
     <!-- 注解  -->
@@ -100,12 +106,12 @@
       <groupId>cpdetector</groupId>
       <artifactId>cpdetector</artifactId>
     </dependency>
-    
+
     <dependency>
       <groupId>jargs</groupId>
       <artifactId>jargs</artifactId>
     </dependency>
-    
+
     <dependency>
       <groupId>net.sourceforge.jchardet</groupId>
       <artifactId>jchardet</artifactId>
