@@ -732,9 +732,10 @@ public abstract class JdbcTemplate {
       } catch (SQLException ex) {
         ex.printStackTrace();
       }
-      logger.error(sql);
+      logger.error(sql.toString().replace("?", "?[{}]"), params);
     } finally {
       this.release(conn, ps, null);
+      logger.debug(sql.toString().replace("?", "?[{}]"), params);
     }
     return result;
   }
