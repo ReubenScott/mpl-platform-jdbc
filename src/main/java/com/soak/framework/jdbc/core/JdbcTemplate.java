@@ -2091,15 +2091,6 @@ public abstract class JdbcTemplate {
       connection.setAutoCommit(false);
       String[] csvRow = null; // row
       while ((csvRow = reader.readNext()) != null) {
-        // for (int i = 0; i < (csvRow.length > cloumnCount ? cloumnCount :
-        // csvRow.length); i++) {
-        // try {
-        // ps.setObject(i + 1, this.castDBType(columnTypes.get(i), csvRow[i]));
-        // } catch (Exception e) {
-        // System.out.println(columnTypes.get(i) + " :  " + csvRow[i]);
-        // e.printStackTrace();
-        // }
-        // }
         int dataNum = csvRow.length; // 数据文件 字段数
         for (int i = 0; i < cloumnCount; i++) {
           try {
