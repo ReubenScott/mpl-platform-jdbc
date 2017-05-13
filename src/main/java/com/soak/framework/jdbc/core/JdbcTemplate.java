@@ -2027,114 +2027,6 @@ public abstract class JdbcTemplate {
   }
 
   /***
-   * 
-   * DEL文件入库
-   * 
-   * @param sql
-   * 
-   * @param filePath
-   *          DEL 文件路径
-   * 
-   * @param split
-   *          字段分隔符
-   * 
-   */
-  public boolean loadDelFile(String schema, String tablename, String filePath, char split) {
-    // 数据库文件 分割符号 0X1D : 29
-    // split = new String(new byte[] { 29 });
-    long start = System.currentTimeMillis();
-    Connection connection = this.getConnection();
-    PreparedStatement ps = null;
-    BufferedReader reader = null;
-
-    boolean flag = false;
-    int loadCount = 0; // 批量计数
-    try {
-      // TODO 不靠谱
-      String encode = IOHandler.getCharSetEncoding(filePath);
-      if (!encode.equals(CharSetType.GBK.getValue())) {
-        logger.warn("IOHandler get File : {}  character set  : {}  incorrect", filePath, encode);
-        encode = CharSetType.GBK.getValue(); //
-      }
-
-      reader = new BufferedReader(new InputStreamReader(new FileInputStream(filePath), encode));
-      // 获取字段类型
-      List<Integer> columnTypes = this.getColumnTypes(schema, tablename);
-      int cloumnCount = columnTypes.size(); // 表 字段数
-      // 根据表名 生成 Insert语句
-      // "insert into CBOD_ECCMRAMR values (?, ?, ?, ?, ?, ?, ?,?, ?, ?, ?, ?, ?, ?,?,?,?)"
-      StringBuffer sql;
-      if (schema == null || "".equals(schema.trim())) {
-        sql = new StringBuffer("insert into " + tablename + " values (");
-      } else {
-        sql = new StringBuffer("insert into " + schema.trim() + "." + tablename + " values (");
-      }
-      for (int i = 1; i < cloumnCount; i++) {
-        sql.append("?,");
-      }
-      sql.append("?)");
-
-      logger.debug(sql.toString());
-
-      ps = connection.prepareStatement(sql.toString());
-      connection.setAutoCommit(false);
-
-      String line;
-      while ((line = reader.readLine()) != null) {
-        // TODO 待验证
-        String[] lineData = line.split(String.valueOf("\\" + split));
-        int dataNum = lineData.length; // 数据文件 字段数
-        for (int i = 0; i < cloumnCount; i++) {
-          try {
-            if (i + 1 > dataNum) {
-              ps.setObject(i + 1, null);
-            } else {
-              ps.setObject(i + 1, this.castDBType(columnTypes.get(i), lineData[i]));
-            }
-          } catch (Exception e) {
-            logger.error(columnTypes.get(i) + " :  " + lineData[i]);
-            e.printStackTrace();
-          }
-        }
-        ps.addBatch();
-        // 1w条记录插入一次
-        if (++loadCount % BATCHCOUNT == 0) {
-          ps.executeBatch();
-          connection.commit();
-        }
-      }
-      // 最后插入不足1w条的数据
-      ps.executeBatch();
-      connection.commit();
-      connection.setAutoCommit(true);
-      flag = true;
-      long end = System.currentTimeMillis();
-      logger.debug("load into [" + schema + "." + tablename + "] Total : [" + loadCount + "] records, Take [" + (float) (end - start) / 1000 + "] seconds . Average : " + 1000
-          * loadCount / (end - start) + " records/second");
-    } catch (UnsupportedEncodingException e) {
-      e.printStackTrace();
-    } catch (FileNotFoundException e) {
-      e.printStackTrace();
-    } catch (IOException e) {
-      e.printStackTrace();
-    } catch (SQLException e) {
-      e.printStackTrace();
-      e.getNextException().printStackTrace();
-      logger.error(e.getMessage());
-    } finally {
-      try {
-        this.release(connection, ps, null);
-        if (reader != null) {
-          reader.close();
-        }
-      } catch (IOException e) {
-        e.printStackTrace();
-      }
-    }
-    return flag;
-  }
-
-  /***
    * CSV（默认以逗号分割的） 文件入库 (char)44
    * 
    * @param tablename
@@ -2144,30 +2036,39 @@ public abstract class JdbcTemplate {
    * @param split
    *          字段分隔符
    */
-  public void loadCsvFile(String schema, String tablename, String filepath) {
-    this.loadCsvFile(schema, tablename, filepath, (char) 44);
+  public boolean loadCsvFile(String schema, String tablename, String filepath) {
+    return this.loadCsvFile(schema, tablename, filepath, (char) 44);
   }
 
   /***
-   * CSV（默认以逗号分割的） 文件入库
+   * DEL CSV（默认以逗号分割的） 文件入库 
    * 
    * @param tablename
    *          入库表名
+   * 
    * @param filePath
-   *          文件路径
+   *        CSV DEL 文件路径
+   * 
    * @param split
    *          字段分隔符
+   *           DEL   0X1D : 29
    */
-  public void loadCsvFile(String schema, String tablename, String filepath, char split) {
+  public boolean loadCsvFile(String schema, String tablename, String filepath, char split) {
     long start = System.currentTimeMillis();
     Connection connection = getConnection();
+    boolean flag = false;
 
     PreparedStatement ps = null;
     CSVReader reader = null;
     int loadCount = 0; // 批量计数
 
     try {
+      // TODO 检查文件编码  不靠谱
       String encode = IOHandler.getCharSetEncoding(filepath);
+      if (!encode.equals(CharSetType.GBK.getValue())) {
+        logger.warn("IOHandler get File : {}  character set  : {}  incorrect", filepath, encode);
+        encode = CharSetType.GBK.getValue(); //
+      }
       reader = new CSVReader(new BufferedReader(new InputStreamReader(new FileInputStream(filepath), encode)), split);
       // 获取字段类型
       List<Integer> columnTypes = this.getColumnTypes(schema, tablename);
@@ -2223,6 +2124,7 @@ public abstract class JdbcTemplate {
       ps.executeBatch();
       connection.commit();
       connection.setAutoCommit(true);
+      flag = true;
       long end = System.currentTimeMillis();
       logger.debug("load into [" + schema + "." + tablename + "] Total : [" + loadCount + "] records, Take [" + (float) (end - start) / 1000 + "] seconds . Average : " + 1000
           * loadCount / (end - start) + " records/second");
@@ -2245,6 +2147,7 @@ public abstract class JdbcTemplate {
         e.printStackTrace();
       }
     }
+    return flag ;
   }
 
   //

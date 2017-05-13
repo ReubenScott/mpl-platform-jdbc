@@ -105,20 +105,23 @@ public class PostgreSQLTemplate extends JdbcTemplate {
       if (StringUtil.isEmpty(schema)) {
         schema = getCurrentSchema();
       }
-
-      rs = dbmd.getColumns(schema.toLowerCase(), null, tablename.toLowerCase(), null);
+      rs = dbmd.getColumns(connection.getCatalog(), schema.toLowerCase(), tablename.toLowerCase(), null);
+//      System.out.println(String.format("|%-26s|%-10s|%-10s|%-10s|%-10s|%-10s|", "表类别","表模式","表名称","字段名称","类型名称","字段类型"));      
       while (rs != null && rs.next()) {
         columnTypes.add(rs.getInt("DATA_TYPE")); // 类型
-        // System.out.print(rs.getString("TABLE_CAT")); //
-        // System.out.print(" " + rs.getString("TABLE_SCHEM"));
-        // System.out.print(" " + rs.getString("TABLE_NAME"));
-        // System.out.print(" " + rs.getString("IS_NULLABLE"));
-        // System.out.print(" " + rs.getString("REMARKS"));
-        // System.out.print(" " + rs.getString("SOURCE_DATA_TYPE"));
-        // String typeName = rs.getString("TYPE_NAME");//类型名称
-        // int precision = rs.getInt("COLUMN_SIZE");//精度
-        // int isNull = rs.getInt("NULLABLE");//是否为空
-        // int scale = rs.getInt("DECIMAL_DIGITS");// 小数的位数
+
+//        System.out.println(String.format("|%-10s|%-10s|%-10s|%-10s|%-10s|%-10s|%-10s|%-10s|", 
+//          rs.getString("TABLE_CAT"),rs.getString("TABLE_SCHEM"),rs.getString("TABLE_NAME")
+//         ,rs.getString("COLUMN_NAME"),rs.getString("TYPE_NAME"),rs.getString("DATA_TYPE")
+//         ,rs.getString("IS_NULLABLE"),rs.getString("SOURCE_DATA_TYPE")
+//        ));
+        
+//         System.out.print(" " + rs.getString("IS_NULLABLE"));
+//         String typeName = rs.getString("TYPE_NAME");//类型名称
+//         int precision = rs.getInt("COLUMN_SIZE");//精度
+//         int isNull = rs.getInt("NULLABLE");//是否为空
+//         int scale = rs.getInt("DECIMAL_DIGITS");// 小数的位数
+//         System.out.println();
       }
     } catch (SQLException e) {
       e.printStackTrace();

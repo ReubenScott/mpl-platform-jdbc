@@ -67,12 +67,9 @@ public class JdbcTemplateTest {
   @Test
   public void testLoadDelFile() {
 //    jdbcHandler.loadDelFile("edw","CBOD_GLGLGHTD", "E:/ftpdata/P_063_CBOD_GLGLGHTD_20150701.del", (char) 29);
-    jdbcHandler.loadDelFile("edw","CMIS_IND_INFO", "E:/ftpdata/P_063_CMIS_IND_INFO_20170413.del", (char)29 );
+    jdbcHandler.loadCsvFile("edw","CMIS_IND_INFO", "E:/ftpdata/P_063_CMIS_IND_INFO_20170413.del", (char)29 );
+    
 //    jdbcHandler.loadDelFile("sche","qd2", "D:/20170509/个人存款20161231/qd1.del", '|');
-  }
-
-//  @Test
-  public void testLoadCVS() {
 //    jdbcHandler.loadCsvFile("EDW","YKJD_CUST_ENT", "D:/home/20160318/CUST_ENT.del", (char) 44);
 //    jdbcHandler.loadCsvFile("etl","edw_tabdellist", "E:/启东农商银行/二期/ETL_92/init/data/ETL.EDW_TABDELLIST.del", (char)44 );
 
