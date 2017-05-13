@@ -179,7 +179,10 @@ public abstract class JdbcTemplate {
     } catch (SQLException e) {
       e.printStackTrace();
       logger.error("getConnection() Exception: {}", e.toString());
-      logger.error("getConnection() Exception: {}", e.getNextException().toString());
+      SQLException ne = e.getNextException();
+      if(ne!=null){
+        logger.error("getConnection() Exception: {}", ne.toString());
+      }
     } finally {
       // checkIn(connection);
     }
@@ -283,15 +286,12 @@ public abstract class JdbcTemplate {
         st.close();
         st = null;
       }
-      if (connection != null) {
-        connection.close();
-        connection = null;
-      }
     } catch (SQLException e) {
       logger.info(e.getSQLState());
     } finally {
       if (connection != null) {
         try {
+          connection.commit();
           connection.close();
         } catch (SQLException e) {
           e.printStackTrace();
@@ -855,7 +855,10 @@ public abstract class JdbcTemplate {
     } catch (SQLException e) {
       e.printStackTrace();
       logger.error("executeBatch Exception: {}", e.toString());
-      logger.error("executeBatch Exception: {}", e.getNextException().toString());
+      SQLException ne = e.getNextException();
+      if(ne!=null){
+        logger.error("executeBatch Exception: {}", ne.toString());
+      }
       try {
         connection.rollback();
       } catch (SQLException ex) {
@@ -2015,7 +2018,10 @@ public abstract class JdbcTemplate {
       System.out.println("请重新保存 Excel ");
     } catch (SQLException e) {
       e.printStackTrace();
-      e.getNextException().printStackTrace();
+      SQLException ne = e.getNextException();
+      if(ne!=null){
+        logger.error("loadExcelFile function Exception: {}", ne.toString());
+      }
     } catch (FileNotFoundException e) {
       e.printStackTrace();
     } catch (IOException e) {
@@ -2127,6 +2133,10 @@ public abstract class JdbcTemplate {
       e.printStackTrace();
     } catch (SQLException e) {
       e.printStackTrace();
+      SQLException ne = e.getNextException();
+      if(ne!=null){
+        logger.error("loadCsvFile function Exception: {}", ne.toString());
+      }
     } finally {
       try {
         this.release(connection, ps, null);
