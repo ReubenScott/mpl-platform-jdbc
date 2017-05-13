@@ -2127,7 +2127,6 @@ public abstract class JdbcTemplate {
       e.printStackTrace();
     } catch (SQLException e) {
       e.printStackTrace();
-      e.getNextException().printStackTrace();
     } finally {
       try {
         this.release(connection, ps, null);
