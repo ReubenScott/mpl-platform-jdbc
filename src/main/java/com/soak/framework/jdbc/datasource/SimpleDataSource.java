@@ -15,7 +15,7 @@ import javax.sql.DataSource;
 
 import com.soak.framework.jdbc.context.JdbcConfig;
 import com.soak.framework.jdbc.core.JdbcTemplate;
-import com.soak.framework.jdbc.core.PostgreSQLTemplate;
+import com.soak.framework.jdbc.template.PostgreSQLTemplate;
 
 
 public final class SimpleDataSource  {

@@ -64,7 +64,9 @@ import com.soak.common.util.BeanUtil;
 import com.soak.common.util.StringUtil;
 import com.soak.framework.jdbc.Restrictions;
 import com.soak.framework.jdbc.context.JdbcConfig; //import com.soak.framework.orm.Column;
-//import com.soak.framework.orm.Table;
+import com.soak.framework.jdbc.template.DB2Template;
+import com.soak.framework.jdbc.template.MySQLTemplate;
+import com.soak.framework.jdbc.template.PostgreSQLTemplate; //import com.soak.framework.orm.Table;
 
 import javax.persistence.Column;
 import javax.persistence.Table;
@@ -89,6 +91,7 @@ public abstract class JdbcTemplate {
   static {
     mapper.put("DB2", DB2Template.class); // DB2/LINUXX8664
     mapper.put("PostgreSQL", PostgreSQLTemplate.class);
+    mapper.put("MySQL", MySQLTemplate.class);
   }
 
   // 根据数据库类型，创建相应的JdbcTemplate
@@ -158,11 +161,21 @@ public abstract class JdbcTemplate {
    * @return
    */
   protected Connection getConnection() {
+    // 默认隔离级别
+    return getConnection(Connection.TRANSACTION_READ_COMMITTED);
+  }
+  
+
+  /**
+   * 隔离级别
+   * @param iso
+   * @return
+   */
+  protected Connection getConnection(int isolation) {
     Connection connection = null;
     try {
-      // connection = dataSource.getConnection();
       connection = DriverManager.getConnection(dbParameter.getUrl(), dbParameter.getUsername(), dbParameter.getPassword());
-      // connection.setCatalog(catalog)
+      connection.setTransactionIsolation(isolation);    // 默认隔离级别为   Connection.TRANSACTION_READ_COMMITTED
     } catch (SQLException e) {
       e.printStackTrace();
       logger.error("getConnection() Exception: {}", e.toString());
@@ -446,6 +459,12 @@ public abstract class JdbcTemplate {
    * 获得当前的Schema
    */
   public abstract String getCurrentSchema();
+  
+  /***
+   * 
+   * 获得所有的Schema
+   */
+  public abstract List<String> getSchemas() ;
 
   /***
    * 获取表字段 类型信息
@@ -637,7 +656,7 @@ public abstract class JdbcTemplate {
    * @throws IllegalAccessException
    * @throws NumException
    */
-  public boolean deleteAnnotatedBean(Object annotatedSample , Restrictions... restrictions) {
+  public boolean deleteAnnotatedBean(Object annotatedSample, Restrictions... restrictions) {
     List<String> columns = new ArrayList<String>();
     List<String> fieldNames = new ArrayList<String>();
     List<Object> params = new ArrayList<Object>();
@@ -682,7 +701,7 @@ public abstract class JdbcTemplate {
               Method method = stuClass.getMethod(methodName);
               Object fieldValue = method.invoke(annotatedSample);
               // params[i] = method.invoke(annotatedSample);
-              // 空字段跳过拼接过程。。。 
+              // 空字段跳过拼接过程。。。
               if (fieldValue != null) {
                 condition.append(" and " + columnName + "=" + "?");
                 params.add(fieldValue);
@@ -1034,8 +1053,11 @@ public abstract class JdbcTemplate {
    * Blob or Clob object but rather a byte array respectively String
    * representation.
    * <p>
-   * Uses the <code>getObject(index)</code> method, but includes additional "hacks" to get around Oracle 10g returning a non-standard object for its TIMESTAMP datatype and a
-   * <code>java.sql.Date</code> for DATE columns leaving out the time portion: These columns will explicitly be extracted as standard <code>java.sql.Timestamp</code> object.
+   * Uses the <code>getObject(index)</code> method, but includes additional
+   * "hacks" to get around Oracle 10g returning a non-standard object for its
+   * TIMESTAMP datatype and a <code>java.sql.Date</code> for DATE columns
+   * leaving out the time portion: These columns will explicitly be extracted as
+   * standard <code>java.sql.Timestamp</code> object.
    * 
    * @param rs
    *          is the ResultSet holding the data
@@ -1133,10 +1155,12 @@ public abstract class JdbcTemplate {
   /**
    * Return whether the given JDBC driver supports JDBC 2.0 batch updates.
    * <p>
-   * Typically invoked right before execution of a given set of statements: to decide whether the set of SQL statements should be executed through the JDBC 2.0 batch mechanism or
-   * simply in a traditional one-by-one fashion.
+   * Typically invoked right before execution of a given set of statements: to
+   * decide whether the set of SQL statements should be executed through the
+   * JDBC 2.0 batch mechanism or simply in a traditional one-by-one fashion.
    * <p>
-   * Logs a warning if the "supportsBatchUpdates" methods throws an exception and simply returns <code>false</code> in that case.
+   * Logs a warning if the "supportsBatchUpdates" methods throws an exception
+   * and simply returns <code>false</code> in that case.
    * 
    * @param con
    *          the Connection to check
@@ -2057,8 +2081,8 @@ public abstract class JdbcTemplate {
 
       String line;
       while ((line = reader.readLine()) != null) {
-//        TODO 待验证
-        String[] lineData = line.split(String.valueOf("\\"+split)); 
+        // TODO 待验证
+        String[] lineData = line.split(String.valueOf("\\" + split));
         int dataNum = lineData.length; // 数据文件 字段数
         for (int i = 0; i < cloumnCount; i++) {
           try {
@@ -2220,6 +2244,106 @@ public abstract class JdbcTemplate {
       } catch (IOException e) {
         e.printStackTrace();
       }
+    }
+  }
+
+  //
+  public String[] readParaTable(String tableName, String columnName) {
+    Connection conn = getConnection();
+    PreparedStatement ps = null;
+    ResultSet rs = null;
+
+    try {
+
+      int count = 0; // 记录表中数据的计数器
+      String cntSql = ""; // 查询表中有几条记录的SQL语句
+      String sltSql = ""; // 查询表中数据的SQL语句
+      if (tableName == null || tableName.equals("") || columnName == null || columnName.equals("")) {
+        return null;
+      }
+
+      if (conn == null) { // 数据库连接不成功
+        return null;
+      } else { // 测试数据库连接是否成功，如果成功进行以下查询操作
+        cntSql = "select count(*) from (select " + columnName + "  from " + tableName + " group by " + columnName + ")";
+        ps = conn.prepareStatement(cntSql);
+        rs = ps.executeQuery();
+        rs.next(); // 得到记录条数
+        count = rs.getInt(1);
+        if (count == 0) {
+          return null; // 如果未检索到记录，则返回null
+        }
+
+        // 从表中查询数据
+        String[] rsArray = new String[count]; // 创建结果集数组
+        sltSql = "select nvl(" + columnName + ",' ')  from " + tableName + " group by " + columnName;
+        ps = conn.prepareStatement(sltSql);
+        rs = ps.executeQuery();
+
+        // 将查询出来的结果放入到结果集数组中，作为返回值
+        for (int i = 0; i < count; i++) {
+          rs.next();
+          rsArray[i] = rs.getString(1);
+
+        }
+        return rsArray;
+      }
+
+    } catch (SQLException e) {
+      e.printStackTrace();
+      try {
+        conn.rollback();
+      } catch (SQLException ex) {
+        ex.printStackTrace();
+      }
+      return null;
+    } finally {
+      this.release(conn, ps, rs);
+    }
+  }
+
+  public String[] readParaTable(String tableName, String destName, String sourceName, String sourceValue) {
+    Connection conn = getConnection();
+    PreparedStatement ps = null;
+    ResultSet rs = null;
+    try {
+      if (tableName == null || tableName.equals("") || destName == null || destName.equals("") || sourceName == null || sourceName.equals("") || sourceValue == null
+          || sourceValue.equals("")) {
+        return null;
+      }
+      int count;
+      String sql = "select count(*) from (select " + destName + " from " + tableName + "  where " + sourceName + "='" + sourceValue + "' group by " + destName + ")";
+      if (conn == null) {
+        return null;
+      } else {
+        ps = conn.prepareStatement(sql);
+        rs = ps.executeQuery();
+        rs.next();
+        count = rs.getInt(1);
+        if (count == 0) {
+          return null;
+        }
+        sql = "select nvl(" + destName + ",' ') from " + tableName + " where " + sourceName + "='" + sourceValue + "' group by " + destName;
+        ps = conn.prepareStatement(sql);
+        rs = ps.executeQuery();
+        rs.next();
+        String[] dest = new String[count]; // 申明一个字符串数组
+        for (int i = 0; i < count; i++) {
+          dest[i] = rs.getString(1);
+          rs.next();
+        } // end for
+        return dest;
+      }
+    } catch (SQLException e) {
+      e.printStackTrace();
+      try {
+        conn.rollback();
+      } catch (SQLException ex) {
+        ex.printStackTrace();
+      }
+      return null;
+    } finally {
+      this.release(conn, ps, rs);
     }
   }
 
