@@ -7,13 +7,13 @@ import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.io.UnsupportedEncodingException;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.math.BigDecimal;
-import java.nio.charset.Charset;
 import java.sql.Blob;
 import java.sql.CallableStatement;
 import java.sql.Clob;
@@ -58,6 +58,7 @@ import com.soak.common.constant.DateBaseType;
 import com.soak.common.constant.DateStyle;
 import com.soak.common.date.DateUtil;
 import com.soak.common.io.ExcelUtil;
+import com.soak.common.io.FileUtil;
 import com.soak.common.io.IOHandler;
 import com.soak.common.io.PropertyReader;
 import com.soak.common.util.BeanUtil;
@@ -123,8 +124,8 @@ public abstract class JdbcTemplate {
 
       } catch (Exception e) {
         e.printStackTrace();
-        logger.error("getInstance() Exception: {}", e.toString());
-        throw new RuntimeException("无法创建【" + productName + "】对应的JDBC模版");
+        logger.error("JdbcTemplate getInstance() Exception: {}", e.toString());
+        logger.error("无法创建【" + drivername + "】对应的JDBC模版");
       } finally {
         if (connection != null) {
           try {
@@ -161,13 +162,12 @@ public abstract class JdbcTemplate {
    * @return
    */
   protected Connection getConnection() {
-    // 默认隔离级别
-    return getConnection(Connection.TRANSACTION_READ_COMMITTED);
+    return getConnection(Connection.TRANSACTION_READ_COMMITTED); // 默认隔离级别
   }
-  
 
   /**
    * 隔离级别
+   * 
    * @param iso
    * @return
    */
@@ -175,18 +175,15 @@ public abstract class JdbcTemplate {
     Connection connection = null;
     try {
       connection = DriverManager.getConnection(dbParameter.getUrl(), dbParameter.getUsername(), dbParameter.getPassword());
-      connection.setTransactionIsolation(isolation);    // 默认隔离级别为   Connection.TRANSACTION_READ_COMMITTED
+      connection.setTransactionIsolation(isolation); // 默认隔离级别为 Connection.TRANSACTION_READ_COMMITTED
     } catch (SQLException e) {
       e.printStackTrace();
       logger.error("getConnection() Exception: {}", e.toString());
       SQLException ne = e.getNextException();
-      if(ne!=null){
+      if (ne != null) {
         logger.error("getConnection() Exception: {}", ne.toString());
       }
-    } finally {
-      // checkIn(connection);
     }
-
     return connection;
   }
 
@@ -207,69 +204,6 @@ public abstract class JdbcTemplate {
   }
 
   /**
-   * Close the given JDBC Connection and ignore any thrown exception. This is
-   * useful for typical finally blocks in manual JDBC code.
-   * 
-   * @param con
-   *          the JDBC Connection to close (may be <code>null</code>)
-   */
-  public static void closeConnection(Connection con) {
-    if (con != null) {
-      try {
-        con.close();
-      } catch (SQLException ex) {
-        logger.debug("Could not close JDBC Connection", ex);
-      } catch (Throwable ex) {
-        // We don't trust the JDBC driver: It might throw
-        // RuntimeException or Error.
-        logger.debug("Unexpected exception on closing JDBC Connection", ex);
-      }
-    }
-  }
-
-  /**
-   * Close the given JDBC Statement and ignore any thrown exception. This is
-   * useful for typical finally blocks in manual JDBC code.
-   * 
-   * @param stmt
-   *          the JDBC Statement to close (may be <code>null</code>)
-   */
-  public static void closeStatement(Statement stmt) {
-    if (stmt != null) {
-      try {
-        stmt.close();
-      } catch (SQLException ex) {
-        logger.debug("Could not close JDBC Statement", ex);
-      } catch (Throwable ex) {
-        // We don't trust the JDBC driver: It might throw
-        // RuntimeException or Error.
-        logger.debug("Unexpected exception on closing JDBC Statement", ex);
-      }
-    }
-  }
-
-  /**
-   * Close the given JDBC ResultSet and ignore any thrown exception. This is
-   * useful for typical finally blocks in manual JDBC code.
-   * 
-   * @param rs
-   *          the JDBC ResultSet to close (may be <code>null</code>)
-   */
-  public static void closeResultSet(ResultSet rs) {
-    if (rs != null) {
-      try {
-        rs.close();
-      } catch (SQLException ex) {
-        logger.debug("Could not close JDBC ResultSet", ex);
-      } catch (Throwable ex) {
-        // We don't trust the JDBC driver: It might throw
-        // RuntimeException or Error.
-        logger.debug("Unexpected exception on closing JDBC ResultSet", ex);
-      }
-    }
-  }
-
-  /**
    * 关闭数据库连接
    * 
    * @param conn
@@ -287,11 +221,15 @@ public abstract class JdbcTemplate {
         st = null;
       }
     } catch (SQLException e) {
-      logger.info(e.getSQLState());
+      e.printStackTrace();
+      logger.error("Could not close JDBC Connection {} ", e.toString());
+    } catch (Throwable e) {
+      // We don't trust the JDBC driver: It might throw RuntimeException or Error.
+      logger.error("Unexpected exception on closing JDBC Connection", e.toString());
     } finally {
       if (connection != null) {
         try {
-          connection.commit();
+          // connection.commit();
           connection.close();
         } catch (SQLException e) {
           e.printStackTrace();
@@ -459,12 +397,12 @@ public abstract class JdbcTemplate {
    * 获得当前的Schema
    */
   public abstract String getCurrentSchema();
-  
+
   /***
    * 
    * 获得所有的Schema
    */
-  public abstract List<String> getSchemas() ;
+  public abstract List<String> getSchemas();
 
   /***
    * 获取表字段 类型信息
@@ -650,8 +588,7 @@ public abstract class JdbcTemplate {
    * 通过实体类生成 删除 语句
    * 
    * @param annotatedSample
-   *          <a href="http://my.oschina.net/u/556800" class="referer"
-   *          target="_blank">@return</a>
+   *          <a href="http://my.oschina.net/u/556800" class="referer" target="_blank">@return</a>
    * @throws IllegalArgumentException
    * @throws IllegalAccessException
    * @throws NumException
@@ -746,15 +683,20 @@ public abstract class JdbcTemplate {
       result = true;
     } catch (SQLException e) {
       e.printStackTrace();
+      logger.error("function execute() Error! : SQL : " + sql.toString().replace("?", "?[{}]"), params);
+      logger.error("function execute() Exception: {}", e.toString());
+      SQLException ne = e.getNextException();
+      if (ne != null) {
+        logger.error("function execute() Exception: {}", ne.toString());
+      }
       try {
         conn.rollback();
       } catch (SQLException ex) {
         ex.printStackTrace();
       }
-      logger.error(sql.toString().replace("?", "?[{}]"), params);
     } finally {
       this.release(conn, ps, null);
-      logger.debug(sql.toString().replace("?", "?[{}]"), params);
+      logger.debug("function execute() SQL : " + sql.toString().replace("?", "?[{}]"), params);
     }
     return result;
   }
@@ -854,10 +796,10 @@ public abstract class JdbcTemplate {
       result = true;
     } catch (SQLException e) {
       e.printStackTrace();
-      logger.error("executeBatch Exception: {}", e.toString());
+      logger.error("function executeBatch() Exception: {}", e.toString());
       SQLException ne = e.getNextException();
-      if(ne!=null){
-        logger.error("executeBatch Exception: {}", ne.toString());
+      if (ne != null) {
+        logger.error("function executeBatch() Exception: {}", ne.toString());
       }
       try {
         connection.rollback();
@@ -875,8 +817,7 @@ public abstract class JdbcTemplate {
    * 通过实体类生成 insert into sql语句
    * 
    * @param annoBean
-   *          <a href="http://my.oschina.net/u/556800" class="referer"
-   *          target="_blank">@return</a>
+   *          <a href="http://my.oschina.net/u/556800" class="referer" target="_blank">@return</a>
    * @throws IllegalArgumentException
    * @throws IllegalAccessException
    * @throws NumException
@@ -1050,17 +991,11 @@ public abstract class JdbcTemplate {
   }
 
   /**
-   * Retrieve a JDBC column value from a ResultSet, using the most appropriate
-   * value type. The returned value should be a detached value object, not
-   * having any ties to the active ResultSet: in particular, it should not be a
-   * Blob or Clob object but rather a byte array respectively String
-   * representation.
+   * Retrieve a JDBC column value from a ResultSet, using the most appropriate value type. The returned value should be a detached value object, not having any ties to the active
+   * ResultSet: in particular, it should not be a Blob or Clob object but rather a byte array respectively String representation.
    * <p>
-   * Uses the <code>getObject(index)</code> method, but includes additional
-   * "hacks" to get around Oracle 10g returning a non-standard object for its
-   * TIMESTAMP datatype and a <code>java.sql.Date</code> for DATE columns
-   * leaving out the time portion: These columns will explicitly be extracted as
-   * standard <code>java.sql.Timestamp</code> object.
+   * Uses the <code>getObject(index)</code> method, but includes additional "hacks" to get around Oracle 10g returning a non-standard object for its TIMESTAMP datatype and a
+   * <code>java.sql.Date</code> for DATE columns leaving out the time portion: These columns will explicitly be extracted as standard <code>java.sql.Timestamp</code> object.
    * 
    * @param rs
    *          is the ResultSet holding the data
@@ -1158,12 +1093,10 @@ public abstract class JdbcTemplate {
   /**
    * Return whether the given JDBC driver supports JDBC 2.0 batch updates.
    * <p>
-   * Typically invoked right before execution of a given set of statements: to
-   * decide whether the set of SQL statements should be executed through the
-   * JDBC 2.0 batch mechanism or simply in a traditional one-by-one fashion.
+   * Typically invoked right before execution of a given set of statements: to decide whether the set of SQL statements should be executed through the JDBC 2.0 batch mechanism or
+   * simply in a traditional one-by-one fashion.
    * <p>
-   * Logs a warning if the "supportsBatchUpdates" methods throws an exception
-   * and simply returns <code>false</code> in that case.
+   * Logs a warning if the "supportsBatchUpdates" methods throws an exception and simply returns <code>false</code> in that case.
    * 
    * @param con
    *          the Connection to check
@@ -1661,30 +1594,52 @@ public abstract class JdbcTemplate {
   /************************************************************ "select" end ************************************************************/
 
   /**
-   * 查询到处数据为Excel
-   * 
-   * @param conn
-   * @param filePath
+   * 导出数据到Excel
    */
-  public Workbook exportExcel(String sql, Object... params) {
-    return this.exportExcel(null, "0", sql, params);
+  public boolean exportExcel(String filepath, String sheetTitle, String sql, Object... params) {
+    boolean result = false;
+    Workbook workbook = this.exportWorkbook(sheetTitle, sql, params);
+    FileOutputStream out = null;
+    try {
+      String folderPath = FileUtil.getFileDirPath(filepath);
+      if (!FileUtil.isDirectoryExits(folderPath)) { // 目录不存在
+        FileUtil.newFolder(folderPath);
+      }
+      out = new FileOutputStream(filepath);
+      workbook.write(out);
+      result = true;
+    } catch (FileNotFoundException e) {
+      e.printStackTrace();
+    } catch (IOException e) {
+      e.printStackTrace();
+    }
+    return result;
   }
 
-  public Workbook exportExcel(String sheetTitle, String sql, Object... params) {
-    return this.exportExcel(null, sheetTitle, sql, params);
-  }
-
-  public Workbook exportExcel(Workbook workbook, String sheetTitle, String sql, Object... params) {
+  /**
+   * 查询出数据为Excel
+   * 
+   * @param sheetTitle
+   *          工作表名称
+   * @param sql
+   * @param params
+   * @return
+   */
+  public Workbook exportWorkbook(String sheetTitle, String sql, Object... params) {
     Connection conn = getConnection();
     PreparedStatement ps = null;
     ResultSet rs = null;
 
     // 创建一个Excel 2007文件
-    if (workbook == null) {
-      workbook = new SXSSFWorkbook();
-    }
+    Workbook workbook = new SXSSFWorkbook();
+    Sheet sheet = null;
+
     // 创建一个Excel的Sheet
-    Sheet sheet = workbook.createSheet(sheetTitle);
+    if (StringUtil.isEmpty(sheetTitle)) {
+      sheet = workbook.createSheet();
+    } else {
+      sheet = workbook.createSheet(sheetTitle);
+    }
 
     // 样式 保留两位小数格式
     CellStyle cellStyle = workbook.createCellStyle();
@@ -1786,7 +1741,7 @@ public abstract class JdbcTemplate {
    * @param encoding
    *          文件内容编码 对应于 DB2 code page
    */
-  public void exportCSV(String filePath, String encoding, char split, String sql, Object... params) {
+  public void exportDEL(String filePath, String encoding, char split, String sql, Object... params) {
     Connection conn = getConnection();
     PreparedStatement ps = null;
     ResultSet rs = null;
@@ -1881,55 +1836,65 @@ public abstract class JdbcTemplate {
 
   /**
    * 查询到处数据为 CSV
+   * @param filePath
+   * @param sql
+   * @param params
+   */
+  public void exportCSV(String filePath, String sql, Object... params) {
+    this.exportCSV(filePath, CharSetType.GBK , sql, params);
+  }
+
+  public void exportCSV(String filePath , CharSetType encoding , String sql, Object... params) {
+    this.exportCSV(filePath, encoding , ',', sql, params);
+  }
+
+  public void exportCSV(String filePath , CharSetType encoding , char separator, String sql, Object... params) {
+    this.exportCSV(filePath, encoding, separator, '"', sql, params);
+  }
+
+  /**
+   * 查询到处数据为 CSV
    * 
    * @param conn
    * @param filePath
    */
-  public void exportCSV_BACK(String filePath, char split, String sql, Object... params) {
+  public void exportCSV(String filePath, CharSetType encoding, char separator, char quotechar, String sql, Object... params) {
     Connection conn = getConnection();
     PreparedStatement ps = null;
     ResultSet rs = null;
-
     try {
-      // conn.setReadOnly(true);
       ps = conn.prepareStatement(sql);
       this.setPreparedValues(ps, params);
       rs = ps.executeQuery();
-
-      // 确认流的输出文件和编码格式，此过程创建了“test.txt”实例
-      OutputStreamWriter outputWriter = new OutputStreamWriter(new FileOutputStream(filePath), "GBK");
-
-      // OutputStream out = new FileOutputStream("D:\\demo.txt");//打印到文件。
-      // OutputStreamWriter osr = new OutputStreamWriter(out);//输出
-      // BufferedWriter bufw = new BufferedWriter(osr);//缓冲
-
-      // CSVWriter writer = new CSVWriter(new FileWriter("yourfile.csv"), ',');
-      CSVWriter writer = new CSVWriter(outputWriter, split);
-
+      OutputStreamWriter outWriter = new OutputStreamWriter(new FileOutputStream(filePath), encoding.getValue());
+      CSVWriter writer = new CSVWriter(outWriter, separator,quotechar);
       writer.writeAll(rs, false);
-
       writer.close();// 关闭文件流
-      rs.close();
-      ps.close();
-      conn.close();
     } catch (SQLException e) {
       e.printStackTrace();
+      logger.error("function exportCSV() Error! : SQL : " + sql.toString().replace("?", "?[{}]"), params);
+      logger.error("function exportCSV() Exception: {}", e.toString());
+      SQLException ne = e.getNextException();
+      if (ne != null) {
+        logger.error("function exportCSV() Exception: {}", ne.toString());
+      }
     } catch (IOException e) {
       e.printStackTrace();
     } finally {
       this.release(conn, ps, rs);
     }
+
   }
-  
 
   /**
    * Excel 默认跳过首行
+   * 
    * @param schema
    * @param tablename
    * @param filePath
    */
   public void loadExcelFile(String schema, String tablename, String filePath) {
-    loadExcelFile(schema, tablename, filePath , 1);
+    loadExcelFile(schema, tablename, filePath, 1);
   }
 
   /**
@@ -2029,9 +1994,10 @@ public abstract class JdbcTemplate {
       System.out.println("请重新保存 Excel ");
     } catch (SQLException e) {
       e.printStackTrace();
+      logger.error("function loadExcelFile() Exception: {}", e.toString());
       SQLException ne = e.getNextException();
-      if(ne!=null){
-        logger.error("loadExcelFile function Exception: {}", ne.toString());
+      if (ne != null) {
+        logger.error("function loadExcelFile() Exception: {}", ne.toString());
       }
     } catch (FileNotFoundException e) {
       e.printStackTrace();
@@ -2044,37 +2010,40 @@ public abstract class JdbcTemplate {
   }
 
   /***
-   * CSV（默认以逗号分割的） 文件入库 
-   * 默认 引用字符   '"'
-   * 默认从首行开始导入
+   * CSV（默认以逗号分割的） 文件入库 默认 引用字符 '"' 默认从首行开始导入
    */
   public boolean loadCsvFile(String schema, String tablename, String filepath) {
-    return this.loadCsvFile(schema, tablename, filepath, (char) 44 );
+    return this.loadCsvFile(schema, tablename, filepath, (char) 44);
   }
 
-  public boolean loadCsvFile(String schema, String tablename, String filepath, char separator ) {
+  public boolean loadCsvFile(String schema, String tablename, String filepath, char separator) {
     return this.loadCsvFile(schema, tablename, filepath, separator, '"');
   }
-  
-  public boolean loadCsvFile(String schema, String tablename, String filepath, char separator , char quotechar) {
-    return this.loadCsvFile(schema, tablename, filepath, separator , quotechar , 0);
+
+  public boolean loadCsvFile(String schema, String tablename, String filepath, char separator, char quotechar) {
+    return this.loadCsvFile(schema, tablename, filepath, separator, quotechar, 0);
   }
 
   /***
-   * DEL CSV（默认以逗号分割的） 文件入库 
+   * DEL CSV（默认以逗号分割的） 文件入库
    * 
-   * @param tablename  入库表名
+   * @param tablename
+   *          入库表名
    * 
-   * @param filePath   CSV DEL 文件路径
+   * @param filePath
+   *          CSV DEL 文件路径
    * 
-   * @param separator 字段分隔符     0X1D : 29  ; 逗号 (char)44 
+   * @param separator
+   *          字段分隔符 0X1D : 29 ; 逗号 (char)44
    * 
-   * @param quotechar 引用字符     空字符  '\0'  (char)0
+   * @param quotechar
+   *          引用字符 空字符 '\0' (char)0
    * 
-   * @param skipLines 忽略行     有些需要跳过首行 标题
+   * @param skipLines
+   *          忽略行 有些需要跳过首行 标题
    * 
    */
-  public boolean loadCsvFile(String schema, String tablename, String filepath, char separator , char quotechar , int skipLines) {
+  public boolean loadCsvFile(String schema, String tablename, String filepath, char separator, char quotechar, int skipLines) {
     long start = System.currentTimeMillis();
     Connection connection = getConnection();
     boolean flag = false;
@@ -2084,13 +2053,13 @@ public abstract class JdbcTemplate {
     int loadCount = 0; // 批量计数
 
     try {
-      // TODO 检查文件编码  不靠谱
+      // TODO 检查文件编码 不靠谱
       String encode = IOHandler.getCharSetEncoding(filepath);
       if (!encode.equals(CharSetType.GBK.getValue())) {
         logger.warn("IOHandler get File : {}  character set  : {}  incorrect", filepath, encode);
         encode = CharSetType.GBK.getValue(); //
       }
-      reader = new CSVReader(new BufferedReader(new InputStreamReader(new FileInputStream(filepath), encode)), separator , quotechar , skipLines);
+      reader = new CSVReader(new BufferedReader(new InputStreamReader(new FileInputStream(filepath), encode)), separator, quotechar, skipLines);
       // 获取字段类型
       List<Integer> columnTypes = this.getColumnTypes(schema, tablename);
       int cloumnCount = columnTypes.size();
@@ -2148,10 +2117,10 @@ public abstract class JdbcTemplate {
       e.printStackTrace();
     } catch (SQLException e) {
       e.printStackTrace();
-      logger.error("function loadCsvFile schema : [{}] tablename : [{}] filepath : [{}] Exception: {}",  new Object []{schema , tablename , filepath , e.toString()});
+      logger.error("function loadCsvFile schema : [{}] tablename : [{}] filepath : [{}] Exception: {}", new Object[] { schema, tablename, filepath, e.toString() });
       SQLException ne = e.getNextException();
-      if(ne!=null){  
-        logger.error("function loadCsvFile schema : [{}] tablename : [{}] filepath : [{}] Exception: {}",  new Object []{schema , tablename , filepath , ne.toString()});
+      if (ne != null) {
+        logger.error("function loadCsvFile schema : [{}] tablename : [{}] filepath : [{}] Exception: {}", new Object[] { schema, tablename, filepath, ne.toString() });
       }
     } finally {
       try {
@@ -2163,7 +2132,7 @@ public abstract class JdbcTemplate {
         e.printStackTrace();
       }
     }
-    return flag ;
+    return flag;
   }
 
   //

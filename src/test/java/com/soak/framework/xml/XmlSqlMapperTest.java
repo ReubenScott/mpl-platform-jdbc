@@ -29,7 +29,7 @@ public class XmlSqlMapperTest {
       String sql = XmlSqlMapper.getInstance().getPreparedSQL("证件");
       sql = sql.replaceAll("@count", i+"");
       System.out.println(sql);
-      Workbook workbook = JdbcTemplate.getInstance().exportExcel(sql);
+      Workbook workbook = JdbcTemplate.getInstance().exportWorkbook("", sql);
       FileOutputStream out = null;
 
       try {

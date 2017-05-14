@@ -57,7 +57,7 @@ public class JdbcDaoImp implements IBasicDao {
   }
 
   public Workbook exportExcel(String dbalias, String title, String sql, Object... params) {
-    return jdbc.exportExcel(null, title, sql, params);
+    return jdbc.exportWorkbook(title, sql, params);
   }
 
   public HashMap queryOneAsMap(String sql, Object... params) {
