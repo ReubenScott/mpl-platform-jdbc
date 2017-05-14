@@ -1920,13 +1920,24 @@ public abstract class JdbcTemplate {
       this.release(conn, ps, rs);
     }
   }
+  
+
+  /**
+   * Excel 默认跳过首行
+   * @param schema
+   * @param tablename
+   * @param filePath
+   */
+  public void loadExcelFile(String schema, String tablename, String filePath) {
+    loadExcelFile(schema, tablename, filePath , 1);
+  }
 
   /**
    * 读取office 2007 xlsx
    * 
    * @param filePath
    */
-  public void loadExcelFile(String schema, String tablename, String filePath) {
+  public void loadExcelFile(String schema, String tablename, String filePath, int skipLines) {
     long start = System.currentTimeMillis();
     Connection conn = getConnection();
     PreparedStatement ps = null;
@@ -1993,7 +2004,7 @@ public abstract class JdbcTemplate {
           rowCount++;
         }
         // 忽略表头
-        if (rowCount > 1) {
+        if (rowCount > skipLines) {
           for (int index = 0; index < cells.size(); index++) {
             ps.setObject(index + 1, this.castDBType(columnTypes.get(index), cells.get(index)));
           }
