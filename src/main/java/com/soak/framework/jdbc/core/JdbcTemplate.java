@@ -2033,33 +2033,37 @@ public abstract class JdbcTemplate {
   }
 
   /***
-   * CSV（默认以逗号分割的） 文件入库 (char)44
-   * 
-   * @param tablename
-   *          入库表名
-   * @param filePath
-   *          文件路径
-   * @param split
-   *          字段分隔符
+   * CSV（默认以逗号分割的） 文件入库 
+   * 默认 引用字符   '"'
+   * 默认从首行开始导入
    */
   public boolean loadCsvFile(String schema, String tablename, String filepath) {
-    return this.loadCsvFile(schema, tablename, filepath, (char) 44);
+    return this.loadCsvFile(schema, tablename, filepath, (char) 44 );
+  }
+
+  public boolean loadCsvFile(String schema, String tablename, String filepath, char separator ) {
+    return this.loadCsvFile(schema, tablename, filepath, separator, '"');
+  }
+  
+  public boolean loadCsvFile(String schema, String tablename, String filepath, char separator , char quotechar) {
+    return this.loadCsvFile(schema, tablename, filepath, separator , quotechar , 0);
   }
 
   /***
    * DEL CSV（默认以逗号分割的） 文件入库 
    * 
-   * @param tablename
-   *          入库表名
+   * @param tablename  入库表名
    * 
-   * @param filePath
-   *        CSV DEL 文件路径
+   * @param filePath   CSV DEL 文件路径
    * 
-   * @param split
-   *          字段分隔符
-   *           DEL   0X1D : 29
+   * @param separator 字段分隔符     0X1D : 29  ; 逗号 (char)44 
+   * 
+   * @param quotechar 引用字符     空字符  '\0'  (char)0
+   * 
+   * @param skipLines 忽略行     有些需要跳过首行 标题
+   * 
    */
-  public boolean loadCsvFile(String schema, String tablename, String filepath, char split) {
+  public boolean loadCsvFile(String schema, String tablename, String filepath, char separator , char quotechar , int skipLines) {
     long start = System.currentTimeMillis();
     Connection connection = getConnection();
     boolean flag = false;
@@ -2075,7 +2079,7 @@ public abstract class JdbcTemplate {
         logger.warn("IOHandler get File : {}  character set  : {}  incorrect", filepath, encode);
         encode = CharSetType.GBK.getValue(); //
       }
-      reader = new CSVReader(new BufferedReader(new InputStreamReader(new FileInputStream(filepath), encode)), split);
+      reader = new CSVReader(new BufferedReader(new InputStreamReader(new FileInputStream(filepath), encode)), separator , quotechar , skipLines);
       // 获取字段类型
       List<Integer> columnTypes = this.getColumnTypes(schema, tablename);
       int cloumnCount = columnTypes.size();
@@ -2133,9 +2137,10 @@ public abstract class JdbcTemplate {
       e.printStackTrace();
     } catch (SQLException e) {
       e.printStackTrace();
+      logger.error("function loadCsvFile schema : [{}] tablename : [{}] filepath : [{}] Exception: {}",  new Object []{schema , tablename , filepath , e.toString()});
       SQLException ne = e.getNextException();
-      if(ne!=null){
-        logger.error("loadCsvFile function Exception: {}", ne.toString());
+      if(ne!=null){  
+        logger.error("function loadCsvFile schema : [{}] tablename : [{}] filepath : [{}] Exception: {}",  new Object []{schema , tablename , filepath , ne.toString()});
       }
     } finally {
       try {

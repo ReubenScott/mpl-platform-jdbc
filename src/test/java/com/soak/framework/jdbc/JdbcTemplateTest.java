@@ -1,11 +1,6 @@
 package com.soak.framework.jdbc;
 
-import static org.junit.Assert.*;
-
 import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
-import java.io.IOException;
 import java.util.List;
 
 import org.junit.Before;
@@ -19,7 +14,7 @@ public class JdbcTemplateTest {
 
   @Before
   public void setUp() {
-    jdbcHandler = jdbcHandler.getInstance();
+    jdbcHandler = JdbcTemplate.getInstance();
   }
 
   // @Test
@@ -67,13 +62,12 @@ public class JdbcTemplateTest {
   @Test
   public void testLoadDelFile() {
 //    jdbcHandler.loadDelFile("edw","CBOD_GLGLGHTD", "E:/ftpdata/P_063_CBOD_GLGLGHTD_20150701.del", (char) 29);
-    jdbcHandler.loadCsvFile("edw","CMIS_IND_INFO", "E:/ftpdata/P_063_CMIS_IND_INFO_20170413.del", (char)29 );
+    jdbcHandler.loadCsvFile("edw","CBOD_CMTLRTXC", "E:/ftpdata/P_063_CBOD_CMTLRTXC_20170511.del", (char)29 , (char)0 );
     
-//    jdbcHandler.loadDelFile("sche","qd2", "D:/20170509/个人存款20161231/qd1.del", '|');
 //    jdbcHandler.loadCsvFile("EDW","YKJD_CUST_ENT", "D:/home/20160318/CUST_ENT.del", (char) 44);
 //    jdbcHandler.loadCsvFile("etl","edw_tabdellist", "E:/启东农商银行/二期/ETL_92/init/data/ETL.EDW_TABDELLIST.del", (char)44 );
 
-    jdbcHandler.loadCsvFile("sche","kh", "D:/20170509/启东同名账户.csv");
+//    jdbcHandler.loadCsvFile("sche","kh", "D:/20170509/启东同名账户.csv");
     
 //    jdbcHandler.loadCsvFile("sche","qd1", "D:/20170509/个人存款20161231/qd2.del", '|');
 //    jdbcHandler.loadCsvFile("sche","qd1", "D:/20170509/个人存款20161231/qd3.del", '|');
@@ -82,8 +76,8 @@ public class JdbcTemplateTest {
 
 //  @Test
   public void testLoadExcelFile() {
-    jdbcHandler.loadExcelFile("sche","qd1", "D:/20170509/test1.xlsx");
-    // etlJobImpl.loadExcelFile("attendance_record", "E:/考勤/详细刷卡记录2016年2月份.xls");
+//    jdbcHandler.loadExcelFile("sche","qd1", "D:/20170509/test1.xlsx");
+    jdbcHandler.loadExcelFile("sche","buf_metadata", "E:/workspace/epl-gateway-etl/init/data/BUF_METADATA.xlsx");
   }
   
   
