@@ -19,7 +19,7 @@ public interface IBasicDao {
 
   public List findByXmlSqlMapper(String dbalias , String sqlName, String value);
 
-  public Workbook exportExcel(String dbalias , String title, String sql, Object... params);
+  public Workbook exportExcel(String sql, Object... params);
 
   public HashMap queryOneAsMap(String sql, Object... params);
   

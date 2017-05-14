@@ -1594,11 +1594,11 @@ public abstract class JdbcTemplate {
   /************************************************************ "select" end ************************************************************/
 
   /**
-   * 导出数据到Excel
+   * 导出数据到Excel   .xlsx
    */
   public boolean exportExcel(String filepath, String sheetTitle, String sql, Object... params) {
     boolean result = false;
-    Workbook workbook = this.exportWorkbook(sheetTitle, sql, params);
+    Workbook workbook = this.exportNamedWorkbook(sheetTitle, sql, params);
     FileOutputStream out = null;
     try {
       String folderPath = FileUtil.getFileDirPath(filepath);
@@ -1616,8 +1616,20 @@ public abstract class JdbcTemplate {
     return result;
   }
 
+  
+  
   /**
-   * 查询出数据为Excel
+   * 导出 Excel 工作表名称 未指定
+   * @param sql
+   * @param params
+   * @return
+   */
+  public Workbook exportNamelessWorkbook(String sql, Object... params) {
+    return exportNamedWorkbook(null,sql, params);
+  }
+
+  /**
+   * 查询出数据为Excel  工作表 名称
    * 
    * @param sheetTitle
    *          工作表名称
@@ -1625,7 +1637,7 @@ public abstract class JdbcTemplate {
    * @param params
    * @return
    */
-  public Workbook exportWorkbook(String sheetTitle, String sql, Object... params) {
+  public Workbook exportNamedWorkbook(String sheetTitle, String sql, Object... params) {
     Connection conn = getConnection();
     PreparedStatement ps = null;
     ResultSet rs = null;
@@ -1836,19 +1848,20 @@ public abstract class JdbcTemplate {
 
   /**
    * 查询到处数据为 CSV
+   * 
    * @param filePath
    * @param sql
    * @param params
    */
   public void exportCSV(String filePath, String sql, Object... params) {
-    this.exportCSV(filePath, CharSetType.GBK , sql, params);
+    this.exportCSV(filePath, CharSetType.GBK, sql, params);
   }
 
-  public void exportCSV(String filePath , CharSetType encoding , String sql, Object... params) {
-    this.exportCSV(filePath, encoding , ',', sql, params);
+  public void exportCSV(String filePath, CharSetType encoding, String sql, Object... params) {
+    this.exportCSV(filePath, encoding, ',', sql, params);
   }
 
-  public void exportCSV(String filePath , CharSetType encoding , char separator, String sql, Object... params) {
+  public void exportCSV(String filePath, CharSetType encoding, char separator, String sql, Object... params) {
     this.exportCSV(filePath, encoding, separator, '"', sql, params);
   }
 
@@ -1867,7 +1880,7 @@ public abstract class JdbcTemplate {
       this.setPreparedValues(ps, params);
       rs = ps.executeQuery();
       OutputStreamWriter outWriter = new OutputStreamWriter(new FileOutputStream(filePath), encoding.getValue());
-      CSVWriter writer = new CSVWriter(outWriter, separator,quotechar);
+      CSVWriter writer = new CSVWriter(outWriter, separator, quotechar);
       writer.writeAll(rs, false);
       writer.close();// 关闭文件流
     } catch (SQLException e) {
