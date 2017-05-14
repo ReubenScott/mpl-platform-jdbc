@@ -6,6 +6,7 @@ import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;
@@ -2148,6 +2149,103 @@ public abstract class JdbcTemplate {
       SQLException ne = e.getNextException();
       if (ne != null) {
         logger.error("function loadCsvFile schema : [{}] tablename : [{}] filepath : [{}] Exception: {}", new Object[] { schema, tablename, filepath, ne.toString() });
+      }
+    } finally {
+      try {
+        this.release(connection, ps, null);
+        if (reader != null) {
+          reader.close();
+        }
+      } catch (IOException e) {
+        e.printStackTrace();
+      }
+    }
+    return flag;
+  }
+  
+
+  /**
+   * 直接从 CSV流 导入数据
+   * @param schema
+   * @param tablename
+   * @param in
+   * @param separator
+   * @param quotechar
+   * @param skipLines
+   * @return
+   */
+  public boolean loadCsvFile(String schema, String tablename, InputStream in, char separator, char quotechar, int skipLines) {
+    long start = System.currentTimeMillis();
+    Connection connection = getConnection();
+    boolean flag = false;
+
+    PreparedStatement ps = null;
+    CSVReader reader = null;
+    int loadCount = 0; // 批量计数
+
+    try {
+      reader = new CSVReader(new BufferedReader(new InputStreamReader(in)), separator, quotechar, skipLines);
+      // 获取字段类型
+      List<Integer> columnTypes = this.getColumnTypes(schema, tablename);
+      int cloumnCount = columnTypes.size();
+      // 根据表名 生成 Insert语句
+      // "insert into CBOD_ECCMRAMR values (?, ?, ?, ?, ?, ?, ?,?, ?, ?, ?, ?, ?, ?,?,?,?)"
+      StringBuffer sql;
+      if (schema == null || "".equals(schema.trim())) {
+        sql = new StringBuffer("insert into " + tablename + " values (");
+      } else {
+        sql = new StringBuffer("insert into " + schema.trim() + "." + tablename + " values (");
+      }
+      for (int i = 1; i < cloumnCount; i++) {
+        sql.append("?,");
+      }
+      sql.append("?)");
+      logger.debug(sql.toString());
+
+      ps = connection.prepareStatement(sql.toString());
+      connection.setAutoCommit(false);
+      String[] csvRow = null; // row
+      while ((csvRow = reader.readNext()) != null) {
+        int dataNum = csvRow.length; // 数据文件 字段数
+        for (int i = 0; i < cloumnCount; i++) {
+          try {
+            if (i + 1 > dataNum) {
+              ps.setObject(i + 1, null);
+            } else {
+              ps.setObject(i + 1, this.castDBType(columnTypes.get(i), csvRow[i]));
+            }
+          } catch (Exception e) {
+            System.out.println(columnTypes.get(i) + " :  " + csvRow[i]);
+            e.printStackTrace();
+          }
+        }
+        ps.addBatch();
+        // 1w条记录插入一次
+        if (++loadCount % BATCHCOUNT == 0) {
+          ps.executeBatch();
+          connection.commit();
+        }
+      }
+      // 最后插入不足1w条的数据
+      ps.executeBatch();
+      connection.commit();
+      connection.setAutoCommit(true);
+      flag = true;
+      long end = System.currentTimeMillis();
+      logger.debug("load into [" + schema + "." + tablename + "] Total : [" + loadCount + "] records, Take [" + (float) (end - start) / 1000 + "] seconds . Average : " + 1000
+          * loadCount / (end - start) + " records/second");
+    } catch (UnsupportedEncodingException e) {
+      e.printStackTrace();
+    } catch (FileNotFoundException e) {
+      e.printStackTrace();
+    } catch (IOException e) {
+      e.printStackTrace();
+    } catch (SQLException e) {
+      e.printStackTrace();
+      logger.error("function loadCsvFile schema : [{}] tablename : [{}] filepath : [{}] Exception: {}", new Object[] { schema, tablename , e.toString() });
+      SQLException ne = e.getNextException();
+      if (ne != null) {
+        logger.error("function loadCsvFile schema : [{}] tablename : [{}] filepath : [{}] Exception: {}", new Object[] { schema, tablename , ne.toString() });
       }
     } finally {
       try {
