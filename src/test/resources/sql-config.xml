@@ -29,7 +29,7 @@
             ,T1.kmh AS 科目,
             T1.kmmc As 科目名称,
             T1.ckzh AS 帐号,
-            ''  AS 计息标识,
+            0  AS 计息标识,
             CASE T1.bz WHEN '01' THEN 'CNY' WHEN '14' THEN 'USD' ELSE T1.bz END AS 币种 ,
             T1.ckye AS 余额
             ,0 AS 积数
@@ -54,8 +54,8 @@
                   select TD_CUST_NO,  TD_CERT_TYP , TD_CERT_ID from F_DEP_TDACNACN 
               ) group by EC_CUST_NO       
            ) T2 on t1.khh = T2.EC_CUST_NO   
-           where integer(T1.xh) > @count*100000
-             and integer(T1.xh) <= (@count+1)*100000
+       --    where integer(T1.xh) > @count*100000
+         --    and integer(T1.xh) <= (@count+1)*100000
            order by integer(T1.xh) asc 
        ]]>
     </sql-value>

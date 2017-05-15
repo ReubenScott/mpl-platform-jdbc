@@ -12,18 +12,21 @@ import org.apache.poi.ss.usermodel.Workbook;
 import org.junit.Before;
 import org.junit.Test;
 
+import com.soak.common.constant.CharSetType;
 import com.soak.framework.jdbc.core.JdbcTemplate;
 import com.soak.framework.xml.XmlSqlMapper;
 
 public class XmlSqlMapperTest {
 
   XmlSqlMapper xmlSqlMapper;
+  JdbcTemplate jdbcHandler;
 
   @Before
   public void setUp() throws Exception {
+    jdbcHandler = JdbcTemplate.getInstance();
   }
 
-  @Test
+//  @Test
   public void testGetSQL() {
     for (int i = 0; i < 25 ; i++) {
       String sql = XmlSqlMapper.getInstance().getPreparedSQL("证件");
@@ -56,6 +59,8 @@ public class XmlSqlMapperTest {
 
   @Test
   public void testAddHashtable() {
+    String sql = XmlSqlMapper.getInstance().getPreparedSQL("证件");
+    jdbcHandler.exportCSV("E:/export/jngrkhckmx.csv",CharSetType.UTF8 , '|', '\0' , sql);
   }
 
   @Test

@@ -229,7 +229,6 @@ public abstract class JdbcTemplate {
     } finally {
       if (connection != null) {
         try {
-          // connection.commit();
           connection.close();
         } catch (SQLException e) {
           e.printStackTrace();
@@ -1857,6 +1856,14 @@ public abstract class JdbcTemplate {
     this.exportCSV(filePath, CharSetType.GBK, sql, params);
   }
 
+  public void exportCSV(String filePath, char separator, String sql, Object... params) {
+    this.exportCSV(filePath , separator, '"', sql, params);
+  }
+  
+  public void exportCSV(String filePath, char separator, char quotechar , String sql, Object... params) {
+    this.exportCSV(filePath, CharSetType.GBK , separator, quotechar , sql, params);
+  }
+
   public void exportCSV(String filePath, CharSetType encoding, String sql, Object... params) {
     this.exportCSV(filePath, encoding, ',', sql, params);
   }
@@ -1865,11 +1872,18 @@ public abstract class JdbcTemplate {
     this.exportCSV(filePath, encoding, separator, '"', sql, params);
   }
 
-  /**
+  /***
    * 查询到处数据为 CSV
    * 
-   * @param conn
    * @param filePath
+   *          CSV DEL 文件路径
+   * 
+   * @param separator
+   *          字段分隔符 0X1D : 29 ; 逗号 (char)44
+   * 
+   * @param quotechar
+   *          引用字符 空字符 '\0'   (char)0
+   * 
    */
   public void exportCSV(String filePath, CharSetType encoding, char separator, char quotechar, String sql, Object... params) {
     Connection conn = getConnection();
@@ -1880,7 +1894,7 @@ public abstract class JdbcTemplate {
       this.setPreparedValues(ps, params);
       rs = ps.executeQuery();
       OutputStreamWriter outWriter = new OutputStreamWriter(new FileOutputStream(filePath), encoding.getValue());
-      CSVWriter writer = new CSVWriter(outWriter, separator, quotechar);
+      CSVWriter writer = new CSVWriter(outWriter, separator, quotechar,"\r\n");
       writer.writeAll(rs, false);
       writer.close();// 关闭文件流
     } catch (SQLException e) {
