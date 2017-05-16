@@ -7,25 +7,10 @@
     <sql-name>证件</sql-name>
     <sql-value><![CDATA[
           select 
-             REPLACE(T1.sjrq,'-','') AS 数据日期,
-             T1.xh As 序号,
-             T1.khxm As 客户名称,
-             T1.khh as 客户号
-            ,CASE T2.EC_CER_TYP 
-                WHEN '0' THEN '身份证' 
-                WHEN '1' THEN '户口簿' 
-                WHEN '105' THEN '全国组织机构代码证' 
-                WHEN '106' THEN '预先核准通知书' 
-                WHEN '2001' THEN  '营业执照号' 
-                WHEN '21' THEN  '中国护照' 
-                WHEN '22' THEN  '外国护照'
-                WHEN '3' THEN '军官证' 
-                WHEN '4' THEN '士兵证' 
-                WHEN '5' THEN '港澳居民来往内地通行证' 
-                WHEN '6' THEN '台湾同胞来往内地通行证' 
-                WHEN 'X' THEN '其它' 
-              ELSE T2.EC_CER_TYP END AS 客户证件类型
-            , T2.EC_CER_NO  As 证件号码
+             REPLACE(T1.sjrq,'-','') AS 数据日期
+            ,T1.xh As 序号
+            ,CASE WHEN T1.khxm = '' THEN '0' ELSE T1.khxm END As 客户名称
+            ,CASE WHEN T1.khh = '' THEN '0' ELSE T1.khh END As 客户号
             ,T1.kmh AS 科目,
             T1.kmmc As 科目名称,
             T1.ckzh AS 帐号,
@@ -33,7 +18,7 @@
             CASE T1.bz WHEN '01' THEN 'CNY' WHEN '14' THEN 'USD' ELSE T1.bz END AS 币种 ,
             T1.ckye AS 余额
             ,0 AS 积数
-            ,T1.ll AS 利息
+            ,0 AS 利息
             ,0 AS 计息天数
             ,T1.ll AS 应付利息
             ,T1.ckye + T1.ll AS 本息合计 
@@ -54,8 +39,6 @@
                   select TD_CUST_NO,  TD_CERT_TYP , TD_CERT_ID from F_DEP_TDACNACN 
               ) group by EC_CUST_NO       
            ) T2 on t1.khh = T2.EC_CUST_NO   
-       --    where integer(T1.xh) > @count*100000
-         --    and integer(T1.xh) <= (@count+1)*100000
            order by integer(T1.xh) asc 
        ]]>
     </sql-value>

@@ -2184,7 +2184,7 @@ public abstract class JdbcTemplate {
     int loadCount = 0; // 批量计数
 
     try {
-      reader = new CSVReader(new BufferedReader(new InputStreamReader(in)), separator, quotechar, skipLines);
+      reader = new CSVReader(new BufferedReader(new InputStreamReader(in,CharSetType.GBK.getValue())), separator, quotechar, skipLines);
       // 获取字段类型
       List<Integer> columnTypes = this.getColumnTypes(schema, tablename);
       int cloumnCount = columnTypes.size();
