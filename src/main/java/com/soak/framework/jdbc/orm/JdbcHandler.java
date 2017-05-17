@@ -1,4 +1,4 @@
-package com.soak.framework.jdbc;
+package com.soak.framework.jdbc.orm;
 /*package com.soak.framework.jdbc;
 
 import java.io.BufferedReader;

@@ -10,6 +10,7 @@ import java.util.List;
 
 import com.soak.common.util.StringUtil;
 import com.soak.framework.jdbc.core.JdbcTemplate;
+import com.soak.framework.jdbc.orm.ColumnField;
 
 
 public class PostgreSQLTemplate extends JdbcTemplate {
@@ -160,6 +161,22 @@ public class PostgreSQLTemplate extends JdbcTemplate {
     }
     return result;
   }
-
   
+  @Override
+  public List<String> getPrimaryKeys(String schema, String tablename) {
+    // TODO Auto-generated method stub
+    return null;
+  }
+  
+  @Override
+  protected List<ColumnField> getColumnFields(String schema, String tablename) {
+    // TODO Auto-generated method stub
+    return null;
+  }
+
+  @Override
+  public boolean mergeTable(String srcSchema, String srcTabName, String targetSchema, String destTabName) {
+    // TODO Auto-generated method stub
+    return false;
+  }
 }

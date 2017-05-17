@@ -10,6 +10,7 @@ import java.util.List;
 
 import com.soak.common.util.StringUtil;
 import com.soak.framework.jdbc.core.JdbcTemplate;
+import com.soak.framework.jdbc.orm.ColumnField;
 
 
 public class DB2Template extends JdbcTemplate {
@@ -82,45 +83,6 @@ public class DB2Template extends JdbcTemplate {
     return flag;
   }
 
-  /***
-   * 获取表字段 类型信息
-   * 
-   */
-  protected List<Integer> getColumnTypes(String schema, String tablename) {
-    Connection connection = getConnection();
-    List<Integer> columnTypes = new ArrayList<Integer>();
-    ResultSet rs = null;
-    try {
-      DatabaseMetaData dbmd = connection.getMetaData();
-
-      // 获取 schema
-      if (StringUtil.isEmpty(schema)) {
-        schema = getCurrentSchema();
-      }
-
-      rs = dbmd.getColumns(null, schema.toUpperCase(), tablename.toUpperCase(), null);
-      while (rs != null && rs.next()) {
-        columnTypes.add(rs.getInt("DATA_TYPE")); // 类型
-        // System.out.print(rs.getString("TABLE_CAT")); //
-        // System.out.print(" " + rs.getString("TABLE_SCHEM"));
-        // System.out.print(" " + rs.getString("TABLE_NAME"));
-        // System.out.print(" " + rs.getString("IS_NULLABLE"));
-        // System.out.print(" " + rs.getString("REMARKS"));
-        // System.out.print(" " + rs.getString("SOURCE_DATA_TYPE"));
-        // String colName = rs.getString("COLUMN_NAME");//列名
-        // String typeName = rs.getString("TYPE_NAME");//类型名称
-        // int precision = rs.getInt("COLUMN_SIZE");//精度
-        // int isNull = rs.getInt("NULLABLE");//是否为空
-        // int scale = rs.getInt("DECIMAL_DIGITS");// 小数的位数
-      }
-    } catch (SQLException e) {
-      e.printStackTrace();
-    } finally {
-      super.release(connection, null, rs);
-    }
-    return columnTypes;
-  }
-
 
   /***
    * 
@@ -151,7 +113,171 @@ public class DB2Template extends JdbcTemplate {
     }
     return result;
   }
+  
+  @Override
+  public List<String> getPrimaryKeys(String schema, String tablename) {
+    Connection connection = getConnection();
+    List<String> primaryKeys = new ArrayList<String>();
+    ResultSet rs = null;
+    try {
+      DatabaseMetaData dbmd = connection.getMetaData();
+
+      // 获取 schema
+      if (StringUtil.isEmpty(schema)) {
+        schema = getCurrentSchema();
+      }
+
+      rs = dbmd.getPrimaryKeys(null, schema.toUpperCase(), tablename.toUpperCase());
+      while (rs != null && rs.next()) {
+        String columnName = rs.getString("COLUMN_NAME");//列名
+        primaryKeys.add(columnName);
+      }
+    } catch (SQLException e) {
+      e.printStackTrace();
+    } finally {
+      super.release(connection, null, rs);
+    }
+    
+    return primaryKeys;
+  }
+  
+  
+  /***
+   * 获取表字段 类型信息
+   * 
+   */
+  protected List<Integer> getColumnTypes(String schema, String tablename) {
+    Connection connection = getConnection();
+    List<Integer> columnTypes = new ArrayList<Integer>();
+    ResultSet rs = null;
+    try {
+      DatabaseMetaData dbmd = connection.getMetaData();
+
+      // 获取 schema
+      if (StringUtil.isEmpty(schema)) {
+        schema = getCurrentSchema();
+      }
+
+      rs = dbmd.getColumns(null, schema.toUpperCase(), tablename.toUpperCase(), null);
+      while (rs != null && rs.next()) {
+        columnTypes.add(rs.getInt("DATA_TYPE")); // 类型
+      }
+    } catch (SQLException e) {
+      e.printStackTrace();
+    } finally {
+      super.release(connection, null, rs);
+    }
+    return columnTypes;
+  }
+
 
   
+  @Override
+  protected List<ColumnField> getColumnFields(String schema, String tablename) {
+    Connection connection = getConnection();
+    List<ColumnField> columnFields = new ArrayList<ColumnField>();
+    ResultSet rs = null;
+    try {
+      DatabaseMetaData dbmd = connection.getMetaData();
+
+      // 获取 schema
+      if (StringUtil.isEmpty(schema)) {
+        schema = getCurrentSchema();
+      }
+      
+
+      rs = dbmd.getColumns(null, schema.toUpperCase(), tablename.toUpperCase(), null);
+      while (rs != null && rs.next()) {
+        ColumnField field = new ColumnField();
+        String columnName = rs.getString("COLUMN_NAME");//列名
+        String typeName = rs.getString("TYPE_NAME");//类型名称
+        int dataType = rs.getInt("DATA_TYPE") ; // 字段数据类型
+        int precision = rs.getInt("COLUMN_SIZE");//精度
+        int scale = rs.getInt("DECIMAL_DIGITS");// 小数的位数
+        int isNull = rs.getInt("NULLABLE");//是否为空
+        
+        // System.out.print(rs.getString("TABLE_CAT")); //
+        // System.out.print(" " + rs.getString("TABLE_SCHEM"));
+        // System.out.print(" " + rs.getString("TABLE_NAME"));
+        // System.out.print(" " + rs.getString("IS_NULLABLE"));
+        // System.out.print(" " + rs.getString("REMARKS"));
+        // System.out.print(" " + rs.getString("SOURCE_DATA_TYPE"));
+        
+        field.setColumnName(columnName);
+        field.setTypeName(typeName);
+        field.setDataType(dataType);
+        field.setPrecision(precision);
+        field.setIsNull(isNull);
+        field.setScale(scale);
+        
+        columnFields.add(field);
+      }
+    } catch (SQLException e) {
+      e.printStackTrace();
+    } finally {
+      super.release(connection, null, rs);
+    }
+    
+    return columnFields;
+  }
+  
+
+  @Override
+  public boolean mergeTable(String srcSchema, String srcTabName, String targetSchema, String destTabName) {
+    StringBuffer sql = new StringBuffer();
+    sql.append("merge into " + targetSchema + "." + destTabName +" T USING ( select ");
+
+    StringBuffer columns = new StringBuffer();
+    StringBuffer sets = new StringBuffer();
+    StringBuffer values = new StringBuffer();
+    
+    
+    List<ColumnField> fields =  getColumnFields(srcSchema, srcTabName);
+    for(int i = 0 ; i< fields.size() ; i++ ){
+      ColumnField field = fields.get(i);
+      String columnName = field.getColumnName() ;
+//      System.out.println(field.getColumnName() + " "+ field.getTypeName() + " " + " " + field.getPrecision() + " "+ field.getScale() );
+      
+      if(i > 0){
+        columns.append( "," + columnName ) ;
+      } else {
+        columns.append( columnName ) ;
+      }
+
+      if(i > 0){
+        sets.append(", T."+ columnName  + " = S."+ columnName  ) ;
+      } else {
+        sets.append(" T."+ columnName  + " = S."+ columnName  ) ;
+      }
+
+      if(i > 0){
+        values.append( ",S." + columnName ) ;
+      } else {
+        values.append( "S."+columnName ) ;
+      }
+      
+    }
+    sql.append(columns);
+    sql.append( " from " + srcSchema + "." + srcTabName + " ) S ON (") ;
+
+    List<String> keys =  getPrimaryKeys(targetSchema, destTabName);
+    for(int i =0 ; i< keys.size() ; i++  ){
+      String key = keys.get(i);
+      if(i > 0){
+        sql.append( " and T." + key + " = S." + key ) ;
+      } else {
+        sql.append( " T." + key + " = S." + key ) ;
+      }
+    }
+    sql.append( " ) WHEN MATCHED THEN UPDATE SET ") ;
+    sql.append(sets);
+    sql.append( " WHEN NOT MATCHED THEN INSERT ( ") ;
+    sql.append(columns);
+    sql.append( " ) values ( ") ;
+    sql.append(values);
+    sql.append( " )") ;
+    
+    return execute(sql.toString());
+  }
 
 }

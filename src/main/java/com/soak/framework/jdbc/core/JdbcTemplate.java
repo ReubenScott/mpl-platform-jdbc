@@ -66,6 +66,7 @@ import com.soak.common.util.BeanUtil;
 import com.soak.common.util.StringUtil;
 import com.soak.framework.jdbc.Restrictions;
 import com.soak.framework.jdbc.context.JdbcConfig; //import com.soak.framework.orm.Column;
+import com.soak.framework.jdbc.orm.ColumnField;
 import com.soak.framework.jdbc.template.DB2Template;
 import com.soak.framework.jdbc.template.MySQLTemplate;
 import com.soak.framework.jdbc.template.PostgreSQLTemplate; //import com.soak.framework.orm.Table;
@@ -403,12 +404,22 @@ public abstract class JdbcTemplate {
    * 获得所有的Schema
    */
   public abstract List<String> getSchemas();
+  
+  public abstract List<String> getPrimaryKeys(String schema, String tablename);
 
   /***
    * 获取表字段 类型信息
    * 
    */
   protected abstract List<Integer> getColumnTypes(String schema, String tablename);
+  
+  /**
+   * 获取表字段属性
+   * @param schema
+   * @param tablename
+   * @return
+   */
+  protected abstract List<ColumnField> getColumnFields(String schema, String tablename);
 
   /***
    * 
@@ -424,6 +435,16 @@ public abstract class JdbcTemplate {
    * @return
    */
   public abstract boolean isTableExits(String schema, String tableName);
+  
+  
+  /**
+   * 变量 更新数据 
+   * @param srcTabName
+   * @param destTabName
+   * @return
+   */
+  public abstract boolean mergeTable(String srcSchema, String srcTabName, String targetSchema, String destTabName);
+  
 
   /**
    * 带参数的翻页功能(oracle)

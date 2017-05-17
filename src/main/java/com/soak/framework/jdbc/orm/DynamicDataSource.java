@@ -1,4 +1,4 @@
-package com.soak.framework.jdbc;
+package com.soak.framework.jdbc.orm;
 
 import java.io.InputStream;
 import java.sql.Connection;
