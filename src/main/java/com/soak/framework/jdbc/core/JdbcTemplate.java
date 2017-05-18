@@ -2099,14 +2099,7 @@ public abstract class JdbcTemplate {
    * 
    */
   public boolean loadCsvFile(String schema, String tablename, String filepath, char separator, char quotechar, int skipLines) {
-    long start = System.currentTimeMillis();
-    Connection connection = getConnection();
     boolean flag = false;
-
-    PreparedStatement ps = null;
-    CSVReader reader = null;
-    int loadCount = 0; // 批量计数
-
     try {
       // TODO 检查文件编码 不靠谱
       String encode = IOHandler.getCharSetEncoding(filepath);
@@ -2114,82 +2107,18 @@ public abstract class JdbcTemplate {
         logger.warn("IOHandler get File : {}  character set  : {}  incorrect", filepath, encode);
         encode = CharSetType.GBK.getValue(); //
       }
-      reader = new CSVReader(new BufferedReader(new InputStreamReader(new FileInputStream(filepath), encode)), separator, quotechar, skipLines);
-      // 获取字段类型
-      List<Integer> columnTypes = this.getColumnTypes(schema, tablename);
-      int cloumnCount = columnTypes.size();
-      // 根据表名 生成 Insert语句
-      // "insert into CBOD_ECCMRAMR values (?, ?, ?, ?, ?, ?, ?,?, ?, ?, ?, ?, ?, ?,?,?,?)"
-      StringBuffer sql;
-      if (schema == null || "".equals(schema.trim())) {
-        sql = new StringBuffer("insert into " + tablename + " values (");
-      } else {
-        sql = new StringBuffer("insert into " + schema.trim() + "." + tablename + " values (");
-      }
-      for (int i = 1; i < cloumnCount; i++) {
-        sql.append("?,");
-      }
-      sql.append("?)");
-      logger.debug(sql.toString());
-
-      ps = connection.prepareStatement(sql.toString());
-      connection.setAutoCommit(false);
-      String[] csvRow = null; // row
-      while ((csvRow = reader.readNext()) != null) {
-        int dataNum = csvRow.length; // 数据文件 字段数
-        for (int i = 0; i < cloumnCount; i++) {
-          try {
-            if (i + 1 > dataNum) {
-              ps.setObject(i + 1, null);
-            } else {
-              ps.setObject(i + 1, this.castDBType(columnTypes.get(i), csvRow[i]));
-            }
-          } catch (Exception e) {
-            System.out.println(columnTypes.get(i) + " :  " + csvRow[i]);
-            e.printStackTrace();
-          }
-        }
-        ps.addBatch();
-        // 1w条记录插入一次
-        if (++loadCount % BATCHCOUNT == 0) {
-          ps.executeBatch();
-          connection.commit();
-        }
-      }
-      // 最后插入不足1w条的数据
-      ps.executeBatch();
-      connection.commit();
-      connection.setAutoCommit(true);
-      flag = true;
-      long end = System.currentTimeMillis();
-      logger.debug("load into [" + schema + "." + tablename + "] Total : [" + loadCount + "] records, Take [" + (float) (end - start) / 1000 + "] seconds . Average : " + 1000
-          * loadCount / (end - start) + " records/second");
-    } catch (UnsupportedEncodingException e) {
-      e.printStackTrace();
+      flag = loadCsvFile(schema, tablename, new FileInputStream(filepath), CharSetType.GBK , separator, quotechar, skipLines);
     } catch (FileNotFoundException e) {
       e.printStackTrace();
-    } catch (IOException e) {
-      e.printStackTrace();
-    } catch (SQLException e) {
-      e.printStackTrace();
-      logger.error("function loadCsvFile schema : [{}] tablename : [{}] filepath : [{}] Exception: {}", new Object[] { schema, tablename, filepath, e.toString() });
-      SQLException ne = e.getNextException();
-      if (ne != null) {
-        logger.error("function loadCsvFile schema : [{}] tablename : [{}] filepath : [{}] Exception: {}", new Object[] { schema, tablename, filepath, ne.toString() });
-      }
-    } finally {
-      try {
-        this.release(connection, ps, null);
-        if (reader != null) {
-          reader.close();
-        }
-      } catch (IOException e) {
-        e.printStackTrace();
-      }
+      logger.error("function loadCsvFile schema : [{}] tablename : [{}] filepath : [{}] Exception: {}", new Object[] { schema, tablename , filepath , e.toString() });
     }
+    
     return flag;
   }
-  
+
+  public boolean loadCsvFile(String schema, String tablename, InputStream in, char separator, char quotechar, int skipLines) {
+    return loadCsvFile(schema, tablename, in, CharSetType.GBK, separator, quotechar, skipLines);
+  }
 
   /**
    * 直接从 CSV流 导入数据
@@ -2201,7 +2130,7 @@ public abstract class JdbcTemplate {
    * @param skipLines
    * @return
    */
-  public boolean loadCsvFile(String schema, String tablename, InputStream in, char separator, char quotechar, int skipLines) {
+  public boolean loadCsvFile(String schema, String tablename, InputStream in , CharSetType encoding , char separator, char quotechar, int skipLines) {
     long start = System.currentTimeMillis();
     Connection connection = getConnection();
     boolean flag = false;
@@ -2211,7 +2140,7 @@ public abstract class JdbcTemplate {
     int loadCount = 0; // 批量计数
 
     try {
-      reader = new CSVReader(new BufferedReader(new InputStreamReader(in,CharSetType.GBK.getValue())), separator, quotechar, skipLines);
+      reader = new CSVReader(new BufferedReader(new InputStreamReader(in, encoding.getValue())), separator, quotechar, skipLines);
       // 获取字段类型
       List<Integer> columnTypes = this.getColumnTypes(schema, tablename);
       int cloumnCount = columnTypes.size();
@@ -2269,10 +2198,10 @@ public abstract class JdbcTemplate {
       e.printStackTrace();
     } catch (SQLException e) {
       e.printStackTrace();
-      logger.error("function loadCsvFile schema : [{}] tablename : [{}] filepath : [{}] Exception: {}", new Object[] { schema, tablename , e.toString() });
+      logger.error("function loadCsvFile schema : [{}] tablename : [{}] Exception: {}", new Object[] { schema, tablename , e.toString() });
       SQLException ne = e.getNextException();
       if (ne != null) {
-        logger.error("function loadCsvFile schema : [{}] tablename : [{}] filepath : [{}] Exception: {}", new Object[] { schema, tablename , ne.toString() });
+        logger.error("function loadCsvFile schema : [{}] tablename : [{}] Exception: {}", new Object[] { schema, tablename , ne.toString() });
       }
     } finally {
       try {
