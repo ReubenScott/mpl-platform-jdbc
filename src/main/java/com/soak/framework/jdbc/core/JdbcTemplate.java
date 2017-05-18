@@ -97,6 +97,9 @@ public abstract class JdbcTemplate {
     mapper.put("MySQL", MySQLTemplate.class);
   }
 
+  /**
+   * Private constructor for singleton implementation.
+   */
   // 根据数据库类型，创建相应的JdbcTemplate
   public synchronized static JdbcTemplate getInstance() {
     Connection connection = null;
@@ -1451,7 +1454,6 @@ public abstract class JdbcTemplate {
     ResultSet rs = null;
     T obj = null;
     try {
-      // conn.setReadOnly(true);
       ps = conn.prepareStatement(sql);
       this.setPreparedValues(ps, params);
       rs = ps.executeQuery();
@@ -1550,7 +1552,6 @@ public abstract class JdbcTemplate {
     ResultSet rs = null;
     List<T> result = new ArrayList<T>();
     try {
-      // conn.setReadOnly(true);
       ps = conn.prepareStatement(sql);
       this.setPreparedValues(ps, params);
       rs = ps.executeQuery();
@@ -1587,7 +1588,6 @@ public abstract class JdbcTemplate {
     ResultSet rs = null;
     HashMap hashRow = null;
     try {
-      // conn.setReadOnly(true);
       ps = conn.prepareStatement(sql);
       this.setPreparedValues(ps, params);
       rs = ps.executeQuery();
@@ -1691,7 +1691,6 @@ public abstract class JdbcTemplate {
     timeStyle.setDataFormat(format.getFormat(DateStyle.TIMEFORMAT.getValue()));
 
     try {
-      // conn.setReadOnly(true);
       ps = conn.prepareStatement(sql);
       this.setPreparedValues(ps, params);
       rs = ps.executeQuery();
@@ -1781,7 +1780,6 @@ public abstract class JdbcTemplate {
     BufferedWriter bufferedWriter = null;
 
     try {
-      // conn.setReadOnly(true);
       ps = conn.prepareStatement(sql);
       this.setPreparedValues(ps, params);
       rs = ps.executeQuery();
@@ -1961,14 +1959,12 @@ public abstract class JdbcTemplate {
 
       // 获取 schema
       if (StringUtil.isEmpty(schema)) {
-        // schema = conn.getCatalog();
-        // conn.getMetaData().getUserName();
         schema = getCurrentSchema();
-        // schema = getSchema(dbalias);
       }
 
       // 字段类型
       List<Integer> columnTypes = this.getColumnTypes(schema, tablename);
+      int cloumnCount = columnTypes.size();
 
       // 根据表名 生成 Insert语句
       // "insert into CBOD_ECCMRAMR values (?, ?, ?, ?, ?, ?, ?,?, ?, ?, ?, ?, ?, ?,?,?,?)"
@@ -1992,8 +1988,8 @@ public abstract class JdbcTemplate {
       Sheet sheet = xwb.getSheetAt(0);
       // 循环输出表格中的内容
 
-      for (int i = sheet.getFirstRowNum(); i <= sheet.getLastRowNum(); i++) {
-        Row row = sheet.getRow(i);
+      for (int line = sheet.getFirstRowNum(); line <= sheet.getLastRowNum(); line++) {
+        Row row = sheet.getRow(line);
         if (row == null) {
           continue;
         }
@@ -2019,8 +2015,18 @@ public abstract class JdbcTemplate {
         }
         // 忽略表头
         if (rowCount > skipLines) {
-          for (int index = 0; index < cells.size(); index++) {
-            ps.setObject(index + 1, this.castDBType(columnTypes.get(index), cells.get(index)));
+          int dataNum = cells.size(); // 数据文件 字段数
+          for (int i = 0; i < cloumnCount ; i++) {
+            try {
+              if (i + 1 > dataNum) {
+                ps.setObject(i + 1, null);
+              } else {
+                ps.setObject(i + 1, this.castDBType(columnTypes.get(i), cells.get(i)));
+              }
+            } catch (Exception e) {
+              System.out.println(columnTypes.get(i) + " :  " + cells.get(i));
+              e.printStackTrace();
+            }
           }
 
           ps.addBatch();
@@ -2046,7 +2052,7 @@ public abstract class JdbcTemplate {
       logger.error("function loadExcelFile() Exception: {}", e.toString());
       SQLException ne = e.getNextException();
       if (ne != null) {
-        logger.error("function loadExcelFile() Exception: {}", ne.toString());
+        logger.error("function loadExcelFile() error details : {}", ne.toString());
       }
     } catch (FileNotFoundException e) {
       e.printStackTrace();

@@ -8,11 +8,31 @@ import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.List;
 
+import javax.sql.DataSource;
+
 import com.soak.common.util.StringUtil;
 import com.soak.framework.jdbc.core.JdbcTemplate;
 import com.soak.framework.jdbc.orm.ColumnField;
+import com.mysql.jdbc.jdbc2.optional.MysqlDataSource;
 
 public class MySQLTemplate extends JdbcTemplate {
+
+  /**
+   * Create new datasource if there is one not already available.
+   * 
+   * @return MySQLDataSource object.
+   * @throws SQLException
+   */
+//  public Connection getConnection() {
+//    if (datasource == null) {
+//      datasource = new MysqlDataSource();
+//      datasource.setUser(this.user);
+//      datasource.setPassword(this.password);
+//      datasource.setServerName(this.host);
+//      datasource.setPort(Integer.parseInt(this.port));
+//    }
+//    return datasource.getConnection();
+//  }
 
   /***
    * 
@@ -149,12 +169,13 @@ public class MySQLTemplate extends JdbcTemplate {
     }
     return result;
   }
-  
+
   @Override
   public List<String> getPrimaryKeys(String schema, String tablename) {
     // TODO Auto-generated method stub
     return null;
   }
+
   @Override
   protected List<ColumnField> getColumnFields(String schema, String tablename) {
     // TODO Auto-generated method stub
