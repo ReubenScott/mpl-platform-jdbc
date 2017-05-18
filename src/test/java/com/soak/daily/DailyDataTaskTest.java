@@ -1,13 +1,12 @@
 package com.soak.daily;
 
-import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 
 import org.junit.Before;
 import org.junit.Test;
 
-import com.soak.common.io.CSVUtils;
+import com.soak.common.io.ExportUtility;
 import com.soak.framework.jdbc.core.JdbcTemplate;
 
 public class DailyDataTaskTest {
@@ -78,7 +77,7 @@ public class DailyDataTaskTest {
     }
     
 
-    CSVUtils.exportCSV("d:/aa.csv", arrays);
+    ExportUtility.exportCSV("d:/aa.csv", arrays);
 
   }
 
