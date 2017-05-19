@@ -335,17 +335,17 @@ public abstract class JdbcTemplate {
 
   /**
    * 根据数据库 字段类型 返回值
-   * 
-   * @param dbColumnType
+   *  
+   * @param columnType   
    * @param value
    * @return
    */
-  protected Object castDBType(int dbColumnType, String value) {
+  protected Object parseByType(int columnType, String value) {
     if (value == null) {
       return null;
     }
     Object result = null;
-    switch (dbColumnType) {
+    switch (columnType) {
       case Types.CHAR:
       case Types.VARCHAR:
       case Types.LONGVARCHAR:
@@ -383,13 +383,15 @@ public abstract class JdbcTemplate {
         result = DateUtil.parseShortDate(value);
         break;
       case Types.TIMESTAMP: // 2016-2-25 7:41:18 时间戳
-        result = DateUtil.parseDateTime(value);
+//        result = DateUtil.parseDateTime(value);
+        result =  new java.sql.Date(DateUtil.parseDateTime(value).getTime());
         break;
       case Types.TIME:
-        result = DateUtil.parseShortTime(value);
+//        result = DateUtil.parseShortTime(value);
+        result =  new java.sql.Time(DateUtil.parseDateTime(value).getTime());
         break;
       default:
-        logger.error("JdbcTemplate castDBType()  lost Data  type : " + dbColumnType);
+        logger.error("JdbcTemplate castDBType()  lost Data  type : " + columnType);
     }
 
     return result;
@@ -1998,7 +2000,7 @@ public abstract class JdbcTemplate {
         int cellnullcount = 0;
         for (int j = row.getFirstCellNum(); j < row.getLastCellNum(); j++) {
           // 通过 row.getCell(j) 获取单元格内容，
-          String cellobjTmp = ImportUtility.convertCellToString(row.getCell(j));
+          String cellobjTmp = ImportUtility.getCellContent(row.getCell(j));
           cells.add(cellobjTmp);
           // 判断空
           if (StringUtil.isEmpty(cellobjTmp)) {
@@ -2020,7 +2022,7 @@ public abstract class JdbcTemplate {
               if (i + 1 > dataNum) {
                 ps.setObject(i + 1, null);
               } else {
-                ps.setObject(i + 1, this.castDBType(columnTypes.get(i), cells.get(i)));
+                ps.setObject(i + 1, this.parseByType(columnTypes.get(i), cells.get(i)));
               }
             } catch (Exception e) {
               System.out.println(columnTypes.get(i) + " :  " + cells.get(i));
@@ -2167,7 +2169,7 @@ public abstract class JdbcTemplate {
             if (i + 1 > dataNum) {
               ps.setObject(i + 1, null);
             } else {
-              ps.setObject(i + 1, this.castDBType(columnTypes.get(i), csvRow[i]));
+              ps.setObject(i + 1, this.parseByType(columnTypes.get(i), csvRow[i]));
             }
           } catch (Exception e) {
             System.out.println(columnTypes.get(i) + " :  " + csvRow[i]);
