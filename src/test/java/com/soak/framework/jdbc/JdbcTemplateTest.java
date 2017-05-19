@@ -62,7 +62,7 @@ public class JdbcTemplateTest {
 
   // @Test
   public void testLoadDelFile() {
-    jdbcHandler.loadCsvFile("edw", "CBOD_CMTLRTXC", "E:/ftpdata/P_063_CBOD_CMTLRTXC_20170511.del", (char) 29, (char) 0);
+    jdbcHandler.loadDelFile("edw", "CBOD_CMTLRTXC", "E:/ftpdata/P_063_CBOD_CMTLRTXC_20170511.del", (char) 29, (char) 0);
     // jdbcHandler.loadCsvFile("EDW", "YKJD_CUST_ENT", "D:/home/20160318/CUST_ENT.del", (char) 44);
     // jdbcHandler.loadCsvFile("sche", "kh", "D:/20170509/启东同名账户.csv");
     // jdbcHandler.loadCsvFile("sche", "qd1", "D:/20170509/个人存款20161231/qd2.del", '|');

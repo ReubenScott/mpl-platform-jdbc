@@ -8,7 +8,6 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
-import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.io.UnsupportedEncodingException;
 import java.lang.reflect.Field;
@@ -38,6 +37,11 @@ import java.util.Map;
 import java.util.Properties;
 import java.util.Vector;
 
+import javax.persistence.Column;
+import javax.persistence.Table;
+import javax.sql.DataSource;
+
+import org.apache.commons.dbcp.BasicDataSource;
 import org.apache.poi.hssf.usermodel.HSSFDataFormat;
 import org.apache.poi.openxml4j.exceptions.InvalidFormatException;
 import org.apache.poi.ss.usermodel.Cell;
@@ -58,23 +62,18 @@ import com.soak.common.constant.CharSetType;
 import com.soak.common.constant.DateBaseType;
 import com.soak.common.constant.DateStyle;
 import com.soak.common.date.DateUtil;
-import com.soak.common.io.ExcelUtil;
 import com.soak.common.io.FileUtil;
 import com.soak.common.io.IOHandler;
+import com.soak.common.io.ImportUtility;
 import com.soak.common.io.PropertyReader;
 import com.soak.common.util.BeanUtil;
 import com.soak.common.util.StringUtil;
 import com.soak.framework.jdbc.Restrictions;
-import com.soak.framework.jdbc.context.JdbcConfig; //import com.soak.framework.orm.Column;
+import com.soak.framework.jdbc.context.JdbcConfig;
 import com.soak.framework.jdbc.orm.ColumnField;
 import com.soak.framework.jdbc.template.DB2Template;
 import com.soak.framework.jdbc.template.MySQLTemplate;
-import com.soak.framework.jdbc.template.PostgreSQLTemplate; //import com.soak.framework.orm.Table;
-
-import javax.persistence.Column;
-import javax.persistence.Table;
-import javax.sql.DataSource;
-import org.apache.commons.dbcp.BasicDataSource;
+import com.soak.framework.jdbc.template.PostgreSQLTemplate;
 
 /**
  * Jdbc 模版
@@ -1999,7 +1998,7 @@ public abstract class JdbcTemplate {
         int cellnullcount = 0;
         for (int j = row.getFirstCellNum(); j < row.getLastCellNum(); j++) {
           // 通过 row.getCell(j) 获取单元格内容，
-          String cellobjTmp = ExcelUtil.convertCellToString(row.getCell(j));
+          String cellobjTmp = ImportUtility.convertCellToString(row.getCell(j));
           cells.add(cellobjTmp);
           // 判断空
           if (StringUtil.isEmpty(cellobjTmp)) {
@@ -2067,16 +2066,16 @@ public abstract class JdbcTemplate {
   /***
    * CSV（默认以逗号分割的） 文件入库 默认 引用字符 '"' 默认从首行开始导入
    */
-  public boolean loadCsvFile(String schema, String tablename, String filepath) {
-    return this.loadCsvFile(schema, tablename, filepath, (char) 44);
+  public boolean loadDelFile(String schema, String tablename, String filepath) {
+    return this.loadDelFile(schema, tablename, filepath, (char) 44);
   }
 
-  public boolean loadCsvFile(String schema, String tablename, String filepath, char separator) {
-    return this.loadCsvFile(schema, tablename, filepath, separator, '"');
+  public boolean loadDelFile(String schema, String tablename, String filepath, char separator) {
+    return this.loadDelFile(schema, tablename, filepath, separator, '"');
   }
 
-  public boolean loadCsvFile(String schema, String tablename, String filepath, char separator, char quotechar) {
-    return this.loadCsvFile(schema, tablename, filepath, separator, quotechar, 0);
+  public boolean loadDelFile(String schema, String tablename, String filepath, char separator, char quotechar) {
+    return this.loadDelFile(schema, tablename, filepath, separator, quotechar, 0);
   }
 
   /***
@@ -2098,26 +2097,26 @@ public abstract class JdbcTemplate {
    *          忽略行 有些需要跳过首行 标题
    * 
    */
-  public boolean loadCsvFile(String schema, String tablename, String filepath, char separator, char quotechar, int skipLines) {
+  public boolean loadDelFile(String schema, String tablename, String filepath, char separator, char quotechar, int skipLines) {
     boolean flag = false;
     try {
+      CharSetType charset = CharSetType.GBK ;   // 默认编码
       // TODO 检查文件编码 不靠谱
       String encode = IOHandler.getCharSetEncoding(filepath);
       if (!encode.equals(CharSetType.GBK.getValue())) {
         logger.warn("IOHandler get File : {}  character set  : {}  incorrect", filepath, encode);
-        encode = CharSetType.GBK.getValue(); //
       }
-      flag = loadCsvFile(schema, tablename, new FileInputStream(filepath), CharSetType.GBK , separator, quotechar, skipLines);
+      flag = loadDelStream(schema, tablename, new FileInputStream(filepath), charset , separator, quotechar, skipLines);
     } catch (FileNotFoundException e) {
       e.printStackTrace();
-      logger.error("function loadCsvFile schema : [{}] tablename : [{}] filepath : [{}] Exception: {}", new Object[] { schema, tablename , filepath , e.toString() });
+      logger.error("function loadDelFile schema : [{}] tablename : [{}] filepath : [{}] Exception: {}", new Object[] { schema, tablename , filepath , e.toString() });
     }
     
     return flag;
   }
 
-  public boolean loadCsvFile(String schema, String tablename, InputStream in, char separator, char quotechar, int skipLines) {
-    return loadCsvFile(schema, tablename, in, CharSetType.GBK, separator, quotechar, skipLines);
+  public boolean loadDelStream(String schema, String tablename, InputStream in, char separator, char quotechar, int skipLines) {
+    return loadDelStream(schema, tablename, in, CharSetType.GBK, separator, quotechar, skipLines);
   }
 
   /**
@@ -2130,7 +2129,7 @@ public abstract class JdbcTemplate {
    * @param skipLines
    * @return
    */
-  public boolean loadCsvFile(String schema, String tablename, InputStream in , CharSetType encoding , char separator, char quotechar, int skipLines) {
+  public boolean loadDelStream(String schema, String tablename, InputStream in , CharSetType encoding , char separator, char quotechar, int skipLines) {
     long start = System.currentTimeMillis();
     Connection connection = getConnection();
     boolean flag = false;
@@ -2198,10 +2197,10 @@ public abstract class JdbcTemplate {
       e.printStackTrace();
     } catch (SQLException e) {
       e.printStackTrace();
-      logger.error("function loadCsvFile schema : [{}] tablename : [{}] Exception: {}", new Object[] { schema, tablename , e.toString() });
+      logger.error("function loadDelFile schema : [{}] tablename : [{}] Exception: {}", new Object[] { schema, tablename , e.toString() });
       SQLException ne = e.getNextException();
       if (ne != null) {
-        logger.error("function loadCsvFile schema : [{}] tablename : [{}] Exception: {}", new Object[] { schema, tablename , ne.toString() });
+        logger.error("function loadDelFile schema : [{}] tablename : [{}] Exception: {}", new Object[] { schema, tablename , ne.toString() });
       }
     } finally {
       try {
