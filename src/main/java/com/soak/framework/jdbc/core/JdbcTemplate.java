@@ -334,7 +334,7 @@ public abstract class JdbcTemplate {
   }
 
   /**
-   * 根据数据库 字段类型 返回值
+   * 根据数据库 字段类型 返回数据库类型
    *  
    * @param columnType   
    * @param value
@@ -383,11 +383,9 @@ public abstract class JdbcTemplate {
         result = DateUtil.parseShortDate(value);
         break;
       case Types.TIMESTAMP: // 2016-2-25 7:41:18 时间戳
-//        result = DateUtil.parseDateTime(value);
-        result =  new java.sql.Date(DateUtil.parseDateTime(value).getTime());
+        result =  new java.sql.Timestamp(DateUtil.parseDateTime(value).getTime());
         break;
       case Types.TIME:
-//        result = DateUtil.parseShortTime(value);
         result =  new java.sql.Time(DateUtil.parseDateTime(value).getTime());
         break;
       default:

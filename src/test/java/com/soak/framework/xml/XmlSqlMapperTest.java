@@ -57,13 +57,23 @@ public class XmlSqlMapperTest {
 
   }
 
-  @Test
   public void testAddHashtable() {
     String sql = XmlSqlMapper.getInstance().getPreparedSQL("证件");
     jdbcHandler.exportCSV("E:/export/jngrkhckmx.csv",CharSetType.UTF8 , '|', '\0' , sql);
   }
 
   @Test
-  public void testGetHashtable() {
+  public void testExportData() {
+//    String sql = XmlSqlMapper.getInstance().getPreparedSQL("零售客户信息");
+//    jdbcHandler.exportCSV("E:/export/零售客户信息.csv",CharSetType.GBK , ',', '\0' , sql);
+
+    String sql = XmlSqlMapper.getInstance().getPreparedSQL("对公客户信息");
+    jdbcHandler.exportCSV("E:/export/对公客户信息.csv",CharSetType.GBK , ',', '\0' , sql);
+    
+
+//    String sql = XmlSqlMapper.getInstance().getPreparedSQL("个体工商户");
+//    jdbcHandler.exportCSV("E:/export/个体工商户.csv",CharSetType.GBK , ',', '\0' , sql);
+    
+    
   }
 }

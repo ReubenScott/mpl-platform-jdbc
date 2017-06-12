@@ -3,6 +3,184 @@
 <sql>
 
 
+
+
+  <sql-info>
+    <sql-name>零售客户信息</sql-name>
+    <sql-value><![CDATA[
+        select T1.CI_CHN_NAME AS 客户名称
+              ,T1.CI_CUST_NO AS 客户编号
+              , CASE T1.CI_SEX WHEN '1' THEN    'm' WHEN '2' THEN 'f' ELSE T1.CI_SEX END    AS 性别
+              , CASE WHEN  T1.CI_RES_CNTY in ( '156' ,'X' ) THEN 'CHN'ELSE T1.CI_RES_CNTY END    AS 国籍
+              ,T1.CI_CUST_TYP AS 客户类别
+              ,T1.CI_OCCUP_COD  AS 职业
+              ,T3.CI_ADDR  AS 住址
+              ,T3.CI_MOBILE_PHONE  AS 移动电话
+              , CASE T2.EC_CER_TYP
+                  WHEN '0' THEN        '1'
+                  WHEN '1' THEN        '2'
+                  WHEN '105' THEN      '99'
+                  WHEN '106' THEN      '99'
+                  WHEN '2001' THEN     '99'
+                  WHEN '21' THEN       '3'
+                  WHEN '22' THEN       '3'
+                  WHEN '3' THEN        '4'
+                  WHEN '4' THEN        '4'
+                  WHEN '5' THEN        '99'
+                  WHEN '6' THEN        '99'
+                  WHEN 'X' THEN        '99'
+                ELSE T2.EC_CER_TYP END AS 客户证件类型
+              ,T2.EC_CER_NO AS 客户证件号码
+              ,T1.CI_WOKG_UNIT_NAME AS 工作单位
+        from F_CI_CICIFCIF T1
+           left join F_CI_ECCIFIDI T2
+             on T1.CI_CUST_NO = T2.EC_CUST_NO and T2.EC_PRI_CER_FLG = 'Y'     -- 主证件号
+           left join  F_CI_CICIFADR T3
+             on T1.CI_CUST_NO  = T3.FK_CICIF_KEY
+          where  T1.CI_CUST_TYP = 1    -- 客户类别
+       ]]>
+    </sql-value>
+  </sql-info>
+
+  <sql-info>
+    <sql-name>对公客户信息</sql-name>
+    <sql-value><![CDATA[
+      select T1.CI_CHN_NAME AS 企业名称
+            ,T1.CI_CUST_NO AS 企业编号
+            ,T2.EC_CER_TYP  AS 企业证件类型
+            ,T2.EC_CER_NO AS 企业证件号码
+            ,T4.EC_FULL_NAM  AS 法人姓名      
+            ,CASE T4.EC_CER_TYP
+                WHEN '0' THEN       '1'
+                WHEN '1' THEN       '2'
+                WHEN '105' THEN     '99'
+                WHEN '106' THEN     '99'
+                WHEN '2001' THEN    '99'
+                WHEN '21' THEN      '3'
+                WHEN '22' THEN      '3'
+                WHEN '3' THEN       '4'
+                WHEN '4' THEN       '4'
+                WHEN '5' THEN       '99'
+                WHEN '6' THEN       '99'
+                WHEN 'X' THEN       '99'
+              ELSE T2.EC_CER_TYP END AS 法人证件类型        
+            ,T4.EC_CER_NO  AS 法人证件号码
+            ,''  AS 上级
+      from F_CI_CICIECIF T1
+         left join F_CI_ECCIFIDI T2
+           on T1.CI_CUST_NO = T2.EC_CUST_NO and T2.EC_PRI_CER_FLG = 'Y'   -- 主证件号
+         left join F_CI_ECCIFCCR T3 
+           on T1.CI_CUST_NO   = T3.EC_CUST_ID_A  and T3.EC_REL_TYP = '01'   -- 企业法人
+         left join F_CI_ECCIFIDI T4
+           on T3.EC_CUST_ID_B = T4.EC_CUST_NO and T4.EC_PRI_CER_FLG = 'Y'   -- 主证件号
+        where  T1.CI_CUST_TYP = 2  -- 客户类别
+          and T1.CI_CUST_NO not in (      
+              -- 个体工商户贷款
+              SELECT custid  
+              FROM EDW.S_LN_XDBL_ACCOUNT_D T1   
+              WHERE STATDATE = '2017-04-30'
+                AND LEFT(T1.CUSTID, 1) = '2'
+                AND T1.INDUSTRYPRO = '12'
+                AND LEFT(T1.ITEMCODE, 4) = '1303'     -- 个体工商户 科目入在 农村企业贷款
+          
+              union all
+                      
+              select CLTNBR from edw.S_DEP_SA_ACCOUNT_D
+                where STATDATE = '2017-04-30'
+                  and itemcode in (
+                    -- 个体工商户
+                    select subjcode from edw.F_CM_GL_CW_KM 
+                      where subjname like '%个体工商户%'
+                        and left(subjcode,1) = '2'
+                        and length(subjcode) = 8    
+                  )
+    
+              union all
+    
+              select CLTNBR from edw.S_DEP_TD_ACCOUNT_D
+                where STATDATE = '2017-04-30'
+                  and itemcode in (
+                    -- 个体工商户
+                    select subjcode from edw.F_CM_GL_CW_KM 
+                      where subjname like '%个体工商户%'
+                        and left(subjcode,1) = '2'
+                        and length(subjcode) = 8    
+                  )
+            )
+       ]]>
+    </sql-value>
+  </sql-info>
+
+
+  <sql-info>
+    <sql-name>个体工商户</sql-name>
+    <sql-value><![CDATA[      
+      select T1.CI_CHN_NAME AS 企业名称
+            ,T1.CI_CUST_NO AS 企业编号
+            ,T4.EC_FULL_NAM  AS 法人姓名      
+            ,CASE T4.EC_CER_TYP
+                WHEN '0' THEN       '1'
+                WHEN '1' THEN       '2'
+                WHEN '105' THEN     '99'
+                WHEN '106' THEN     '99'
+                WHEN '2001' THEN    '99'
+                WHEN '21' THEN      '3'
+                WHEN '22' THEN      '3'
+                WHEN '3' THEN       '4'
+                WHEN '4' THEN       '4'
+                WHEN '5' THEN       '99'
+                WHEN '6' THEN       '99'
+                WHEN 'X' THEN       '99'
+              ELSE T2.EC_CER_TYP END AS 法人证件类型        
+            ,T4.EC_CER_NO  AS 法人证件号码
+      from F_CI_CICIECIF T1
+         left join F_CI_ECCIFIDI T2
+           on T1.CI_CUST_NO = T2.EC_CUST_NO and T2.EC_PRI_CER_FLG = 'Y'   -- 主证件号
+         left join F_CI_ECCIFCCR T3 
+           on T1.CI_CUST_NO   = T3.EC_CUST_ID_A  and T3.EC_REL_TYP = '01'   -- 企业法人
+         left join F_CI_ECCIFIDI T4
+           on T3.EC_CUST_ID_B = T4.EC_CUST_NO and T4.EC_PRI_CER_FLG = 'Y'   -- 主证件号
+        where  T1.CI_CUST_TYP = 2  -- 客户类别
+          and T1.CI_CUST_NO in (      
+            -- 个体工商户贷款
+            SELECT custid  
+            FROM EDW.S_LN_XDBL_ACCOUNT_D T1   
+            WHERE STATDATE = '2017-04-30'
+              AND LEFT(T1.CUSTID, 1) = '2'
+              AND T1.INDUSTRYPRO = '12'
+              AND LEFT(T1.ITEMCODE, 4) = '1303'     -- 个体工商户 科目入在 农村企业贷款
+        
+            union all
+                    
+            select CLTNBR from edw.S_DEP_SA_ACCOUNT_D
+              where STATDATE = '2017-04-30'
+                and itemcode in (
+                  -- 个体工商户
+                  select subjcode from edw.F_CM_GL_CW_KM 
+                    where subjname like '%个体工商户%'
+                      and left(subjcode,1) = '2'
+                      and length(subjcode) = 8    
+                )
+  
+            union all
+  
+            select CLTNBR from edw.S_DEP_TD_ACCOUNT_D
+              where STATDATE = '2017-04-30'
+                and itemcode in (
+                  -- 个体工商户
+                  select subjcode from edw.F_CM_GL_CW_KM 
+                    where subjname like '%个体工商户%'
+                      and left(subjcode,1) = '2'
+                      and length(subjcode) = 8    
+                )
+          )
+       ]]>
+    </sql-value>
+  </sql-info>
+
+
+
+
   <sql-info>
     <sql-name>证件</sql-name>
     <sql-value><![CDATA[

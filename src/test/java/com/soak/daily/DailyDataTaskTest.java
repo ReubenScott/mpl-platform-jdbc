@@ -18,14 +18,27 @@ public class DailyDataTaskTest {
     jdbc = JdbcTemplate.getInstance();
   }
 
+  @Test
   public void testInsert() throws Exception {
     // 导入数据
-    // jdbc.loadExcelFile("sche", "hkbyrdkhd", "E:/启东农商银行/报表/财务部/20170517/户口本与个人贷款核对明细.xlsx");
+    String schema = "sche" ;
+//    String tablename = "YG_BUTONGMING5Z10" ;
+//    String filepath =  "E:/启东农商银行/报表/账户情况行长考核/附件2：同证件不同名5至10账号.xlsx" ;
 
-    jdbc.loadExcelFile("sche", "sfzscmd", "E:/启东农商银行/报表/财务部/20170517/3.最终同名一二代身份证和身份证录入错误筛查名单.xlsx");
+//    String tablename = "YG_TONGMING5Z10" ;
+//    String filepath =  "E:/启东农商银行/报表/账户情况行长考核/附件3：同证件同名5至10账号.xlsx" ;
+
+//    String tablename = "YG_TONGZJ10" ;
+//    String filepath =  "E:/启东农商银行/报表/账户情况行长考核/附件1：10户以上账户数客户明细新.xlsx" ;
+    
+    String tablename = "YG_TONGZJ5Z10" ;
+    String filepath =  "E:/启东农商银行/报表/账户情况行长考核/附件4：同证件5至10账号汇总（附3与附4合计表）.xlsx" ;
+    
+//    jdbc.loadExcelFile("sche", "sfzscmd", "E:/启东农商银行/报表/财务部/20170517/3.最终同名一二代身份证和身份证录入错误筛查名单.xlsx");
+     jdbc.loadExcelFile(schema, tablename,filepath);
+    
   }
 
-  @Test
   public void testSqlQuery() {
     String sqlQuery = "select * from sche.sfzscmd";
 
