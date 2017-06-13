@@ -31,7 +31,7 @@ public class JdbcDaoImp implements IBasicDao {
   }
 
   public int execute(String sql, Object... params) {
-    return jdbc.executeUpdate(null, sql, params);
+    return jdbc.executeUpdate(sql, params);
   }
 
   public <T> List<T> querySampleList(Class<T> sample, String sql, Object... params) {
