@@ -32,12 +32,14 @@ import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.Vector;
 
 import javax.persistence.Column;
+import javax.persistence.Id;
 import javax.persistence.Table;
 import javax.sql.DataSource;
 
@@ -249,14 +251,19 @@ public abstract class JdbcTemplate {
    * @param ps
    * @param params
    */
-  protected void setPreparedValues(PreparedStatement ps, List<Object> params) {
+  protected void setPreparedValues(PreparedStatement ps, Collection<Object> params) {
     try {
-      if (params != null && params.size() > 0) {
-        for (int i = 0; i < params.size(); i++) {
-          // ps.setObject(i + 1, params.get(i));
-          ps.setObject(i + 1, castJavatoDBValue(params.get(i)));
-        }
+      Iterator<Object> it =  params.iterator();
+      int i = 1 ;
+      while(it.hasNext()){
+        ps.setObject(i++, castJavatoDBValue(it.next()));
       }
+//      if (params != null && params.size() > 0) {
+//        for (int i = 0; i < params.size(); i++) {
+//          // ps.setObject(i + 1, params.get(i));
+//          ps.setObject(i + 1, castJavatoDBValue(params.get(i)));
+//        }
+//      }
     } catch (SQLException e) {
       e.printStackTrace();
     }
@@ -272,8 +279,16 @@ public abstract class JdbcTemplate {
     try {
       if (params != null && params.length > 0) {
         for (int i = 0; i < params.length; i++) {
-          // ps.setObject(i + 1, params[i]);
-          ps.setObject(i + 1, castJavatoDBValue(params[i]));
+          //判断是否为String数组类型  
+          if ( params[i] instanceof  Object[] ){  
+            //如果为true则强转成String数组  
+            setPreparedValues(ps, (Object[]) params[i]);
+          } else if ( params[i] instanceof  Collection ){  
+            //如果为true则强转成String数组  
+            setPreparedValues(ps, (Collection)params[i]);
+          } else {
+            ps.setObject(i + 1, castJavatoDBValue(params[i]));
+          }
         }
       }
     } catch (SQLException e) {
@@ -644,10 +659,21 @@ public abstract class JdbcTemplate {
           sql.append(schema.trim() + "." + tablename);
         }
 
+        boolean haspk = false ;
         Field[] fields = stuClass.getDeclaredFields();// 获得反射对象集合
+
+        for (Field field : fields) {// 循环组装 field : fields
+          if (field.isAnnotationPresent(Id.class)) { // 获取主键
+            haspk = true ;
+            break ;
+          }
+        }
+        
         for (Field field : fields) {// 循环组装 field : fields
           if (field.isAnnotationPresent(Column.class)) {
             Column col = field.getAnnotation(Column.class); // 获取列注解
+            
+            
             String columnName = col.name(); // 数据库映射字段
             if (StringUtil.isEmpty(columnName)) { // name 未指定 ，设置默认 为 字段名
               columnName = field.getName();
@@ -661,13 +687,19 @@ public abstract class JdbcTemplate {
               // get到field的值
               Method method = stuClass.getMethod(methodName);
               Object fieldValue = method.invoke(annotatedSample);
-              // params[i] = method.invoke(annotatedSample);
-              // 空字段跳过拼接过程。。。
-              if (fieldValue != null) {
+              
+              if (field.isAnnotationPresent(Id.class)) { // 获取主键
                 condition.append(" and " + columnName + "=" + "?");
                 params.add(fieldValue);
-              } else { // 如果没有值，不拼接
-                condition.append(" and " + columnName + " IS NULL ");
+              } else if( haspk == false){  // 非主键
+                // params[i] = method.invoke(annotatedSample);
+                // 空字段跳过拼接过程。。。
+                if (fieldValue != null) {
+                  condition.append(" and " + columnName + "=" + "?");
+                  params.add(fieldValue);
+                } else { // 如果没有值，不拼接
+                  condition.append(" and " + columnName + " IS NULL ");
+                }
               }
             } catch (IllegalArgumentException e) {
               e.printStackTrace();

@@ -8,12 +8,9 @@ import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.List;
 
-import javax.sql.DataSource;
-
 import com.kindustry.common.util.StringUtil;
 import com.kindustry.framework.jdbc.core.JdbcTemplate;
 import com.kindustry.framework.jdbc.orm.ColumnField;
-import com.mysql.jdbc.jdbc2.optional.MysqlDataSource;
 
 public class MySQLTemplate extends JdbcTemplate {
 
