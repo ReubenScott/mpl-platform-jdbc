@@ -1,5 +1,6 @@
 package com.kindustry.framework.dao.imp;
 
+import java.io.Serializable;
 import java.util.HashMap;
 import java.util.List;
 
@@ -83,8 +84,8 @@ public class BasicDaoImp implements IBasicDao {
   public boolean truncateTable(String schema, String tablename) {
     return jdbcTemplate.truncateTable(schema, tablename);
   }
-  
-  public  boolean wipeTableData(Class<? extends Object> entityClass){
+
+  public boolean wipeTableData(Class<? extends Object> entityClass) {
     return jdbcTemplate.truncateAnnotatedTable(entityClass);
   }
 
@@ -100,4 +101,7 @@ public class BasicDaoImp implements IBasicDao {
     return jdbcTemplate.deleteAnnotatedBean(annoEntity);
   }
 
+  public boolean deleteEntityBySID(Class entity, Serializable sid) {
+    return jdbcTemplate.deleteEntityBySID(entity,sid);
+  }
 }

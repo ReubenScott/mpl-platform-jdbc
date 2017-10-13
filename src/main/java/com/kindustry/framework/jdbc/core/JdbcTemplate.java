@@ -9,6 +9,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
+import java.io.Serializable;
 import java.io.UnsupportedEncodingException;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
@@ -253,17 +254,17 @@ public abstract class JdbcTemplate {
    */
   protected void setPreparedValues(PreparedStatement ps, Collection<Object> params) {
     try {
-      Iterator<Object> it =  params.iterator();
-      int i = 1 ;
-      while(it.hasNext()){
+      Iterator<Object> it = params.iterator();
+      int i = 1;
+      while (it.hasNext()) {
         ps.setObject(i++, castJavatoDBValue(it.next()));
       }
-//      if (params != null && params.size() > 0) {
-//        for (int i = 0; i < params.size(); i++) {
-//          // ps.setObject(i + 1, params.get(i));
-//          ps.setObject(i + 1, castJavatoDBValue(params.get(i)));
-//        }
-//      }
+      // if (params != null && params.size() > 0) {
+      // for (int i = 0; i < params.size(); i++) {
+      // // ps.setObject(i + 1, params.get(i));
+      // ps.setObject(i + 1, castJavatoDBValue(params.get(i)));
+      // }
+      // }
     } catch (SQLException e) {
       e.printStackTrace();
     }
@@ -279,13 +280,13 @@ public abstract class JdbcTemplate {
     try {
       if (params != null && params.length > 0) {
         for (int i = 0; i < params.length; i++) {
-          //判断是否为String数组类型  
-          if ( params[i] instanceof  Object[] ){  
-            //如果为true则强转成String数组  
+          // 判断是否为String数组类型
+          if (params[i] instanceof Object[]) {
+            // 如果为true则强转成String数组
             setPreparedValues(ps, (Object[]) params[i]);
-          } else if ( params[i] instanceof  Collection ){  
-            //如果为true则强转成String数组  
-            setPreparedValues(ps, (Collection)params[i]);
+          } else if (params[i] instanceof Collection) {
+            // 如果为true则强转成String数组
+            setPreparedValues(ps, (Collection) params[i]);
           } else {
             ps.setObject(i + 1, castJavatoDBValue(params[i]));
           }
@@ -351,8 +352,8 @@ public abstract class JdbcTemplate {
 
   /**
    * 根据数据库 字段类型 返回数据库类型
-   *  
-   * @param columnType   
+   * 
+   * @param columnType
    * @param value
    * @return
    */
@@ -399,10 +400,10 @@ public abstract class JdbcTemplate {
         result = DateUtil.parseShortDate(value);
         break;
       case Types.TIMESTAMP: // 2016-2-25 7:41:18 时间戳
-        result =  new java.sql.Timestamp(DateUtil.parseDateTime(value).getTime());
+        result = new java.sql.Timestamp(DateUtil.parseDateTime(value).getTime());
         break;
       case Types.TIME:
-        result =  new java.sql.Time(DateUtil.parseDateTime(value).getTime());
+        result = new java.sql.Time(DateUtil.parseDateTime(value).getTime());
         break;
       default:
         logger.error("JdbcTemplate castDBType()  lost Data  type : " + columnType);
@@ -422,7 +423,7 @@ public abstract class JdbcTemplate {
    * 获得所有的Schema
    */
   public abstract List<String> getSchemas();
-  
+
   public abstract List<String> getPrimaryKeys(String schema, String tablename);
 
   /***
@@ -430,9 +431,10 @@ public abstract class JdbcTemplate {
    * 
    */
   protected abstract List<Integer> getColumnTypes(String schema, String tablename);
-  
+
   /**
    * 获取表字段属性
+   * 
    * @param schema
    * @param tablename
    * @return
@@ -453,16 +455,15 @@ public abstract class JdbcTemplate {
    * @return
    */
   public abstract boolean isTableExits(String schema, String tableName);
-  
-  
+
   /**
-   * 变量 更新数据 
+   * 变量 更新数据
+   * 
    * @param srcTabName
    * @param destTabName
    * @return
    */
   public abstract boolean mergeTable(String srcSchema, String srcTabName, String targetSchema, String destTabName);
-  
 
   /**
    * 带参数的翻页功能(oracle)
@@ -659,21 +660,20 @@ public abstract class JdbcTemplate {
           sql.append(schema.trim() + "." + tablename);
         }
 
-        boolean haspk = false ;
+        boolean haspk = false;
         Field[] fields = stuClass.getDeclaredFields();// 获得反射对象集合
 
         for (Field field : fields) {// 循环组装 field : fields
           if (field.isAnnotationPresent(Id.class)) { // 获取主键
-            haspk = true ;
-            break ;
+            haspk = true;
+            break;
           }
         }
-        
+
         for (Field field : fields) {// 循环组装 field : fields
           if (field.isAnnotationPresent(Column.class)) {
             Column col = field.getAnnotation(Column.class); // 获取列注解
-            
-            
+
             String columnName = col.name(); // 数据库映射字段
             if (StringUtil.isEmpty(columnName)) { // name 未指定 ，设置默认 为 字段名
               columnName = field.getName();
@@ -687,11 +687,11 @@ public abstract class JdbcTemplate {
               // get到field的值
               Method method = stuClass.getMethod(methodName);
               Object fieldValue = method.invoke(annotatedSample);
-              
+
               if (field.isAnnotationPresent(Id.class)) { // 获取主键
                 condition.append(" and " + columnName + "=" + "?");
                 params.add(fieldValue);
-              } else if( haspk == false){  // 非主键
+              } else if (haspk == false) { // 非主键
                 // params[i] = method.invoke(annotatedSample);
                 // 空字段跳过拼接过程。。。
                 if (fieldValue != null) {
@@ -719,6 +719,54 @@ public abstract class JdbcTemplate {
       }
     }
 
+    logger.debug(sql.toString());
+
+    return execute(sql.toString(), params);
+  }
+
+  /**
+   * 根据 主键 删除
+   * 
+   * @param entity
+   * @param sid
+   * @return
+   */
+  public boolean deleteEntityBySID(Class<? extends Object> entity, Serializable sid) {
+    List<Object> params = new ArrayList<Object>();
+    String schema = null;
+    String tablename = null;
+
+    // 拼接 SQL 语句
+    StringBuffer sql = new StringBuffer("delete from ");
+    StringBuilder condition = new StringBuilder(" where 1=1 ");
+    
+    if (entity.isAnnotationPresent(Table.class)) { // 获得类是否有注解
+      Table table = entity.getAnnotation(Table.class);
+      schema = table.schema().trim(); // 获得schema
+      tablename = table.name().trim(); // 获得表名
+
+      // 拼接 SQL 语句
+      if (StringUtil.isEmpty(schema)) {
+        sql.append(tablename);
+      } else {
+        sql.append(schema.trim() + "." + tablename);
+      }
+
+      Field[] fields = entity.getDeclaredFields();// 获得反射对象集合
+
+      for (Field field : fields) {  // 循环组装 field : fields
+        if (field.isAnnotationPresent(Column.class) && field.isAnnotationPresent(Id.class) ) {
+          Column col = field.getAnnotation(Column.class); // 获取列注解
+          String columnName = col.name(); // 数据库映射字段
+          if (StringUtil.isEmpty(columnName)) { // name 未指定 ，设置默认 为 字段名
+            columnName = field.getName();
+          }
+          condition.append(" and " + columnName + "=" + "?");
+          params.add(sid);
+        }
+      }
+      sql.append(condition);
+    }
     logger.debug(sql.toString());
 
     return execute(sql.toString(), params);
@@ -1648,7 +1696,7 @@ public abstract class JdbcTemplate {
   /************************************************************ "select" end ************************************************************/
 
   /**
-   * 导出数据到Excel   .xlsx
+   * 导出数据到Excel .xlsx
    */
   public boolean exportExcel(String filepath, String sheetTitle, String sql, Object... params) {
     boolean result = false;
@@ -1670,20 +1718,19 @@ public abstract class JdbcTemplate {
     return result;
   }
 
-  
-  
   /**
    * 导出 Excel 工作表名称 未指定
+   * 
    * @param sql
    * @param params
    * @return
    */
   public Workbook exportNamelessWorkbook(String sql, Object... params) {
-    return exportNamedWorkbook(null,sql, params);
+    return exportNamedWorkbook(null, sql, params);
   }
 
   /**
-   * 查询出数据为Excel  工作表 名称
+   * 查询出数据为Excel 工作表 名称
    * 
    * @param sheetTitle
    *          工作表名称
@@ -1910,11 +1957,11 @@ public abstract class JdbcTemplate {
   }
 
   public void exportCSV(String filePath, char separator, String sql, Object... params) {
-    this.exportCSV(filePath , separator, '"', sql, params);
+    this.exportCSV(filePath, separator, '"', sql, params);
   }
-  
-  public void exportCSV(String filePath, char separator, char quotechar , String sql, Object... params) {
-    this.exportCSV(filePath, CharSetType.GBK , separator, quotechar , sql, params);
+
+  public void exportCSV(String filePath, char separator, char quotechar, String sql, Object... params) {
+    this.exportCSV(filePath, CharSetType.GBK, separator, quotechar, sql, params);
   }
 
   public void exportCSV(String filePath, CharSetType encoding, String sql, Object... params) {
@@ -1935,7 +1982,7 @@ public abstract class JdbcTemplate {
    *          字段分隔符 0X1D : 29 ; 逗号 (char)44
    * 
    * @param quotechar
-   *          引用字符 空字符 '\0'   (char)0
+   *          引用字符 空字符 '\0' (char)0
    * 
    */
   public void exportCSV(String filePath, CharSetType encoding, char separator, char quotechar, String sql, Object... params) {
@@ -1947,7 +1994,7 @@ public abstract class JdbcTemplate {
       this.setPreparedValues(ps, params);
       rs = ps.executeQuery();
       OutputStreamWriter outWriter = new OutputStreamWriter(new FileOutputStream(filePath), encoding.getValue());
-      CSVWriter writer = new CSVWriter(outWriter, separator, quotechar,"\r\n");
+      CSVWriter writer = new CSVWriter(outWriter, separator, quotechar, "\r\n");
       writer.writeAll(rs, false);
       writer.close();// 关闭文件流
     } catch (SQLException e) {
@@ -2049,7 +2096,7 @@ public abstract class JdbcTemplate {
         // 忽略表头
         if (rowCount > skipLines) {
           int dataNum = cells.size(); // 数据文件 字段数
-          for (int i = 0; i < cloumnCount ; i++) {
+          for (int i = 0; i < cloumnCount; i++) {
             try {
               if (i + 1 > dataNum) {
                 ps.setObject(i + 1, null);
@@ -2134,18 +2181,18 @@ public abstract class JdbcTemplate {
   public boolean loadDelFile(String schema, String tablename, String filepath, char separator, char quotechar, int skipLines) {
     boolean flag = false;
     try {
-      CharSetType charset = CharSetType.GBK ;   // 默认编码
+      CharSetType charset = CharSetType.GBK; // 默认编码
       // TODO 检查文件编码 不靠谱
       String encode = IOHandler.getCharSetEncoding(filepath);
       if (!encode.equals(CharSetType.GBK.getValue())) {
         logger.warn("IOHandler get File : {}  character set  : {}  incorrect", filepath, encode);
       }
-      flag = loadDelStream(schema, tablename, new FileInputStream(filepath), charset , separator, quotechar, skipLines);
+      flag = loadDelStream(schema, tablename, new FileInputStream(filepath), charset, separator, quotechar, skipLines);
     } catch (FileNotFoundException e) {
       e.printStackTrace();
-      logger.error("function loadDelFile schema : [{}] tablename : [{}] filepath : [{}] Exception: {}", new Object[] { schema, tablename , filepath , e.toString() });
+      logger.error("function loadDelFile schema : [{}] tablename : [{}] filepath : [{}] Exception: {}", new Object[] { schema, tablename, filepath, e.toString() });
     }
-    
+
     return flag;
   }
 
@@ -2155,6 +2202,7 @@ public abstract class JdbcTemplate {
 
   /**
    * 直接从 CSV流 导入数据
+   * 
    * @param schema
    * @param tablename
    * @param in
@@ -2163,7 +2211,7 @@ public abstract class JdbcTemplate {
    * @param skipLines
    * @return
    */
-  public boolean loadDelStream(String schema, String tablename, InputStream in , CharSetType encoding , char separator, char quotechar, int skipLines) {
+  public boolean loadDelStream(String schema, String tablename, InputStream in, CharSetType encoding, char separator, char quotechar, int skipLines) {
     long start = System.currentTimeMillis();
     Connection connection = getConnection();
     boolean flag = false;
@@ -2231,10 +2279,10 @@ public abstract class JdbcTemplate {
       e.printStackTrace();
     } catch (SQLException e) {
       e.printStackTrace();
-      logger.error("function loadDelFile schema : [{}] tablename : [{}] Exception: {}", new Object[] { schema, tablename , e.toString() });
+      logger.error("function loadDelFile schema : [{}] tablename : [{}] Exception: {}", new Object[] { schema, tablename, e.toString() });
       SQLException ne = e.getNextException();
       if (ne != null) {
-        logger.error("function loadDelFile schema : [{}] tablename : [{}] Exception: {}", new Object[] { schema, tablename , ne.toString() });
+        logger.error("function loadDelFile schema : [{}] tablename : [{}] Exception: {}", new Object[] { schema, tablename, ne.toString() });
       }
     } finally {
       try {

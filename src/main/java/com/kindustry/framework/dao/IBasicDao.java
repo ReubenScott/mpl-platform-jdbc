@@ -1,5 +1,6 @@
 package com.kindustry.framework.dao;
 
+import java.io.Serializable;
 import java.util.HashMap;
 import java.util.List;
 
@@ -36,7 +37,9 @@ public interface IBasicDao {
   public List callProcedure(String procedureName, Object[] in , int... outTypes) ;
   
   public int execute(String sql, Object... params);
-
+  
+  public boolean deleteEntityBySID(Class entity, Serializable sid);
+  
   public boolean deleteAnnotatedEntity(Object annoEntity);
   
 }
