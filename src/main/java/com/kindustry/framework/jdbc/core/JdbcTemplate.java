@@ -522,7 +522,103 @@ public abstract class JdbcTemplate {
 
     return false;
   }
+  
 
+  /**
+   *  
+   * 根据实例更新  NonEmptyField
+   * 
+   */
+  public boolean updateNullunableEntity(Object annotatedEntity) {
+    List<Object> setParams = new ArrayList<Object>();
+    List<Object> keyParams = new ArrayList<Object>();
+    String schema = null;
+    String tablename = null;
+
+    // 拼接 SQL 语句
+    StringBuffer sql = new StringBuffer("update ");
+    StringBuilder condition = new StringBuilder(" where 1=1 ");
+
+    Class<? extends Object> entityClass = annotatedEntity.getClass();
+    
+    if (entityClass.isAnnotationPresent(Table.class)) { // 获得类是否有注解
+      Table table = entityClass.getAnnotation(Table.class);
+      schema = table.schema().trim(); // 获得schema
+      tablename = table.name().trim(); // 获得表名
+
+      // 拼接 SQL 语句
+      if (StringUtil.isEmpty(schema)) {
+        sql.append(tablename);
+      } else {
+        sql.append(schema.trim() + "." + tablename);
+      }
+      sql.append(" set ");
+
+      Field[] fields = entityClass.getDeclaredFields();// 获得反射对象集合
+      int setIndex = 0 ;
+
+      for (Field field : fields) {  // 循环组装 field : fields
+        if (field.isAnnotationPresent(Column.class)  ) {
+          Column col = field.getAnnotation(Column.class); // 获取列注解
+          String columnName = col.name(); // 数据库映射字段
+          if (StringUtil.isEmpty(columnName)) { // name 未指定 ，设置默认 为 字段名
+            columnName = field.getName();
+          }
+          String fieldName = field.getName(); // 获取字段名称
+          String methodName = "get" + fieldName.substring(0, 1).toUpperCase() + fieldName.substring(1);// 获取字段的get方法
+          Object fieldValue = null ;
+          try {
+            // get到field的值
+            Method method = entityClass.getMethod(methodName);
+            fieldValue =  method.invoke(annotatedEntity);
+          } catch (IllegalArgumentException e) {
+            e.printStackTrace();
+          } catch (IllegalAccessException e) {
+            e.printStackTrace();
+          } catch (SecurityException e) {
+            e.printStackTrace();
+          } catch (NoSuchMethodException e) {
+            e.printStackTrace();
+          } catch (InvocationTargetException e) {
+            e.printStackTrace();
+          }
+          
+          if(field.isAnnotationPresent(Id.class)){  // 是主键
+            condition.append(" and " + columnName + "= ? ");
+            keyParams.add(fieldValue);
+          } else { 
+            if(fieldValue != null ){
+              if(setIndex++ >0){
+                sql.append(" , " );
+              }
+              sql.append(columnName + " = ? ");
+              setParams.add(fieldValue);
+            }
+          }
+          
+        }
+      }
+      sql.append(condition);
+      for(Object key : keyParams){
+        setParams.add(key);
+      }
+    }
+    logger.debug(sql.toString());
+//    return execute(sql.toString(), setParams.toArray(new Object[setParams.size()])); 
+    return execute(sql.toString(), setParams); 
+  }
+  
+
+  /**
+   * 
+   * 根据实例更新
+   * 
+   */
+  public boolean updateNullableEntity(Object annotatedSample) {
+    return updateAnnotatedEntity(annotatedSample);
+  }
+  
+  
   /**
    * 
    * 根据实例更新
@@ -633,7 +729,7 @@ public abstract class JdbcTemplate {
    * @throws IllegalAccessException
    * @throws NumException
    */
-  public boolean deleteAnnotatedBean(Object annotatedSample, Restrictions... restrictions) {
+  public boolean deleteAnnotatedEntity(Object annotatedSample, Restrictions... restrictions) {
     List<String> columns = new ArrayList<String>();
     List<String> fieldNames = new ArrayList<String>();
     List<Object> params = new ArrayList<Object>();
@@ -806,6 +902,37 @@ public abstract class JdbcTemplate {
   }
 
   /**
+   * 执行一条带参数的sql
+   * 
+   * @param sql
+   *          String
+   * @param param
+   *          List
+   * @return 影响行数
+   */
+  public int executeUpdate(String sql, Object... params) {
+    int count = 0;
+    Connection conn = getConnection();
+    PreparedStatement ps = null;
+    try {
+      ps = conn.prepareStatement(sql);
+      this.setPreparedValues(ps, params);
+      count = ps.executeUpdate();
+    } catch (SQLException e) {
+      e.printStackTrace();
+      try {
+        conn.rollback();
+      } catch (SQLException ex) {
+        ex.printStackTrace();
+      }
+      logger.error(sql);
+    } finally {
+      this.release(conn, ps, null);
+    }
+    return count;
+  }
+
+  /**
    * 执行一批sql
    * 
    * @param sqlList
@@ -835,37 +962,6 @@ public abstract class JdbcTemplate {
     } finally {
       this.release(conn, st, null);
     }
-  }
-
-  /**
-   * 执行一条带参数的sql
-   * 
-   * @param sql
-   *          String
-   * @param param
-   *          List
-   * @return 影响行数
-   */
-  public int executeUpdate(String sql, Object... params) {
-    int count = 0;
-    Connection conn = getConnection();
-    PreparedStatement ps = null;
-    try {
-      ps = conn.prepareStatement(sql);
-      this.setPreparedValues(ps, params);
-      count = ps.executeUpdate();
-    } catch (SQLException e) {
-      e.printStackTrace();
-      try {
-        conn.rollback();
-      } catch (SQLException ex) {
-        ex.printStackTrace();
-      }
-      logger.error(sql);
-    } finally {
-      this.release(conn, ps, null);
-    }
-    return count;
   }
 
   /**
@@ -917,7 +1013,8 @@ public abstract class JdbcTemplate {
     }
     return result;
   }
-
+  
+  
   /**
    * 通过实体类生成 insert into sql语句
    * 
@@ -927,7 +1024,7 @@ public abstract class JdbcTemplate {
    * @throws IllegalAccessException
    * @throws NumException
    */
-  public boolean saveAnnotatedBean(Object... annoBeans) {
+  public boolean saveAnnotatedEntity(Object... annoEntities) {
     List<String> columns = new ArrayList<String>();
     List<Object[]> paramList = new ArrayList<Object[]>();
     StringBuilder values = new StringBuilder();
@@ -939,11 +1036,11 @@ public abstract class JdbcTemplate {
     List beans = new ArrayList();
 
     // 判断是不是集合 将 参数 annoBeans（数组 或 集合） 转为 集合，方便下面便利处理。
-    for (Object annoBean : annoBeans) {
-      if (annoBean instanceof Collection) {
-        beans.addAll((Collection) annoBean);
+    for (Object annoEntity : annoEntities) {
+      if (annoEntity instanceof Collection) {
+        beans.addAll((Collection) annoEntity);
       } else {
-        beans.add(annoBean);
+        beans.add(annoEntity);
       }
     }
 

@@ -26,9 +26,13 @@ public interface IBasicDao {
   
   public void exportCSV(String filePath , String encoding, char split, String sql, Object... params);
   
-  public boolean saveAnnotatedBean(Object... annoBean);
+  public boolean updateNullunableEntity(Object annoEntity);
   
-  public boolean saveAnnotatedBean(List<?> annoBeans);
+//  public boolean updateAnnotatedBean(Object annoEntity);
+  
+  public boolean saveAnnotatedEntity(Object... annoEntity);
+  
+  public boolean saveAnnotatedEntity(List<?> annoEntities);
   
   public boolean truncateTable(String schema, String tablename);
   

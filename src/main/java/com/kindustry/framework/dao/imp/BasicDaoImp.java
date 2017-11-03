@@ -73,12 +73,16 @@ public class BasicDaoImp implements IBasicDao {
     jdbcTemplate.exportCSV(filePath, encoding, split, sql, params);
   }
 
-  public boolean saveAnnotatedBean(Object... annoBean) {
-    return jdbcTemplate.saveAnnotatedBean(annoBean);
+  public boolean updateNullunableEntity(Object annoEntity){
+    return jdbcTemplate.updateNullunableEntity(annoEntity);
   }
 
-  public boolean saveAnnotatedBean(List<?> annoBeans) {
-    return jdbcTemplate.saveAnnotatedBean(BeanUtil.listToArray(annoBeans));
+  public boolean saveAnnotatedEntity(Object... annoEntity) {
+    return jdbcTemplate.saveAnnotatedEntity(annoEntity);
+  }
+
+  public boolean saveAnnotatedEntity(List<?> annoEntities) {
+    return jdbcTemplate.saveAnnotatedEntity(BeanUtil.listToArray(annoEntities));
   }
 
   public boolean truncateTable(String schema, String tablename) {
@@ -98,7 +102,7 @@ public class BasicDaoImp implements IBasicDao {
   }
 
   public boolean deleteAnnotatedEntity(Object annoEntity) {
-    return jdbcTemplate.deleteAnnotatedBean(annoEntity);
+    return jdbcTemplate.deleteAnnotatedEntity(annoEntity);
   }
 
   public boolean deleteEntityBySID(Class entity, Serializable sid) {
