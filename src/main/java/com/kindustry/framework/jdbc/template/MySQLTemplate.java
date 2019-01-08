@@ -11,6 +11,7 @@ import java.util.List;
 import com.kindustry.common.util.StringUtil;
 import com.kindustry.framework.jdbc.core.JdbcTemplate;
 import com.kindustry.framework.jdbc.orm.ColumnField;
+import com.kindustry.framework.jdbc.support.Pagination;
 
 public class MySQLTemplate extends JdbcTemplate {
 
@@ -178,10 +179,48 @@ public class MySQLTemplate extends JdbcTemplate {
     // TODO Auto-generated method stub
     return null;
   }
+  
 
+  @Override
+  public boolean replaceTable(String srcSchema, String srcTabName, String targetSchema, String destTabName) {
+    
+    return false ;
+  }
+
+
+  @Override
+  public boolean insertTable(String srcSchema, String srcTabName, String targetSchema, String destTabName) {
+    
+    
+    return false ;
+  }
+  
   @Override
   public boolean mergeTable(String srcSchema, String srcTabName, String targetSchema, String destTabName) {
     // TODO Auto-generated method stub
     return false;
   }
+  
+  
+  @Override
+  public Pagination queryPageBySQL(String sql, int startIndex, int pageSize, Object... params) {
+    long totalCount = queryCountResult(sql, params);
+    sql = sql + " limit " + pageSize;
+    List<List> items =  queryForList(sql, params);
+    
+    Pagination ps = new Pagination(items,totalCount, startIndex, pageSize);
+    return ps;
+  }
+  
+  
+  public Pagination querySamplePageBySQL(Class sample, String sql, int startIndex, int pageSize, Object... params) {
+    long totalCount = queryCountResult(sql, params);
+    sql = sql + " limit " + startIndex + " , " + pageSize;
+    List items =  querySampleList(sample, sql, params);
+    System.out.println(sql);
+    Pagination ps = new Pagination(items,totalCount, startIndex, pageSize);
+    return ps;
+  }
+  
+  
 }

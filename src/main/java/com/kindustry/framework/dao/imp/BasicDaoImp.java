@@ -12,6 +12,7 @@ import com.kindustry.common.util.BeanUtil;
 import com.kindustry.framework.dao.IBasicDao;
 import com.kindustry.framework.jdbc.Restrictions;
 import com.kindustry.framework.jdbc.core.JdbcTemplate;
+import com.kindustry.framework.jdbc.support.Pagination;
 import com.kindustry.framework.xml.XmlSqlMapper;
 
 /**
@@ -107,5 +108,14 @@ public class BasicDaoImp implements IBasicDao {
 
   public boolean deleteEntityBySID(Class entity, Serializable sid) {
     return jdbcTemplate.deleteEntityBySID(entity,sid);
+  }
+  
+
+  public Pagination queryPageBySQL(String sql, final int startIndex, final int pageSize, Object... params) {
+    return jdbcTemplate.queryPageBySQL(sql,startIndex,pageSize,params);
+  }
+
+  public Pagination querySamplePageBySQL(Class sample, String sql, final int startIndex, final int pageSize, Object... params) {
+    return jdbcTemplate.querySamplePageBySQL(sample, sql,startIndex,pageSize,params);
   }
 }

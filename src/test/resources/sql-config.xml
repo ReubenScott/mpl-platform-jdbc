@@ -3,7 +3,26 @@
 <sql>
 
 
-
+  <sql-info>
+    <sql-name>大额存单产品分类合计</sql-name>
+    <sql-value><![CDATA[
+      select T2.TD_PD_NO  AS 产品编码
+            ,T3.TD_PD_NAME  As 产品名称
+            ,sum(T1.DEPBAL)  AS 余额
+      from S_DEP_TD_ACCOUNT_D  T1
+         left join F_DEP_TDMCDRGB T2
+             on T1.ACCTNBR   = T2.TD_TD_ACCT_NO 
+         left join F_DEP_TDMCDMCD T3
+           on T2.TD_PD_NO = NVL(T3.TD_CODE, '') || T3.TD_1LVL_BRH_ID ||T3.TD_YR ||'00'|| T3.TD_DEP_PRD||'00' || T3.TD_TNRNO
+        where T1.STATDATE =  '@statdate'
+          and T1.CCYNBR = 'CNY'
+          and T1.PRDCODE in ( '999TD000208','999TD110908' ) 
+       group by  T2.TD_PD_NO  , T3.TD_PD_NAME
+        having sum(T1.DEPBAL) > 0
+       ]]>
+    </sql-value>
+  </sql-info>
+ 
 
   <sql-info>
     <sql-name>零售客户信息</sql-name>
@@ -374,9 +393,94 @@
   </sql-info>
 
   <sql-info>
-    <sql-name>出货</sql-name>
+    <sql-name>客户清理明细</sql-name>
     <sql-value><![CDATA[
-
+        WITH F_GRYHKHFL_PARAM   -- 证件信息准确但同一证件开立不同户名
+          AS ( SELECT  CS.BRNMGR
+                      ,br.BRNNAME
+                      ,CS.ACCTNBR
+                      ,CERT_ID
+                      ,CARDNBR
+                      ,CLTNBR
+                      ,CLTNM
+                      ,DEPBAL
+               FROM  edw.S_DEP_SA_ACCOUNT_D_BASE CS       
+                 left join EDW.DICT_BRANCH br
+                   on  CS.BRNMGR = br.BRNNBR   
+               WHERE  LENGTH (CERT_ID) = 18
+                      AND CERT_ID IS NOT NULL
+                      AND CERT_ID NOT LIKE '%1111111111111111%'
+                      AND CERT_ID NOT LIKE '%9999999999999999%'
+                      AND CERT_ID NOT LIKE '%0000000000000000%'
+                      AND CERT_TYP IN ('0' , '1' )
+          ) 
+          select min(机构号||' '||机构名) AS 机构
+                 ,客户号  AS 客户号
+                 ,客户姓名  AS 客户姓名
+                 ,证件号 AS 证件号
+                 ,min(性别 ) AS 性别 
+                 ,min(工作单位 ) AS 工作单位
+                 ,min(联系电话 ) AS 联系电话
+                 ,min(地址 ) AS 地址
+          from (        
+          
+          select BRNMGR AS 机构号
+                      , BRNNAME AS 机构名
+                      ,CLTNBR  AS 客户号
+                      ,CLTNM   AS 客户姓名
+                      ,ACCTNBR AS  账号
+                      ,CARDNBR AS 卡号
+                      ,CERT_ID AS 证件号
+                      ,CASE T4.CI_SEX WHEN '1' THEN '男' WHEN '2' THEN '女' ELSE null END  AS 性别 
+                      ,T4.CI_WOKG_UNIT_NAME  AS 工作单位
+                      ,T4.PHONE  AS 联系电话
+                      ,T4.CI_ADDR  AS 地址
+           from F_GRYHKHFL_PARAM P
+          left join (  -- 对私客户信息
+            select
+                T1.CI_CUST_NO
+              , max(T1.CI_SEX)  AS CI_SEX
+              , max(T1.CI_WOKG_UNIT_NAME) As  CI_WOKG_UNIT_NAME
+              , max(CASE WHEN NVL(T2.CI_MOBILE_PHONE, '') = '' THEN T2.CI_TEL_NO ELSE T2.CI_MOBILE_PHONE END ) AS PHONE
+              , max(T2.CI_ADDR) AS CI_ADDR
+            from edw.F_CI_CICIFCIF T1
+              left join  F_CI_CICIFADR T2
+                on T1.CI_CUST_NO  = T2.FK_CICIF_KEY
+            group by T1.CI_CUST_NO      
+          ) T4  ON  P.CLTNBR = T4.CI_CUST_NO
+             where nvl(T4.PHONE,'') = '' 
+               and p.ACCTNBR not in (        
+                select ACCTNBR
+                from (
+                  --证件信息准确但同一证件开立不同户名 -已核实账户数 --
+                  select p.ACCTNBR
+                    from EDW.F_GRYHKHFL_PARAM p
+                  INNER JOIN (
+                      select SA_ACCT_NO from EDW.F_CI_ECCIFIDI cif
+                      inner join EDW.F_CBOD_SAACNCAT cat
+                        on cif.EC_CUST_NO =  cat.SA_CUST_NO
+                      where cat.SA_RESULT ='2' and (cif.EC_ID_CHK_FLG ='00' or cif.EC_ID_CHK_FLG='01')
+                    ) a on p.ACCTNBR =A.SA_ACCT_NO
+        
+                  UNION ALL
+                
+                  --(11)证件信息准确但同一证件开立不同户名 -撤销账户数 --
+                  select p.ACCTNBR
+                  from EDW.F_GRYHKHFL_PARAM p
+                    INNER JOIN EDW.F_DEP_SAACNACN SA
+                      ON p.ACCTNBR =SA.SA_ACCT_NO
+                    where SA.SA_CACCT_DT <> '1800-01-01'
+                
+                  UNION ALL
+                
+                  --(12)证件信息准确但同一证件开立不同户名 -转久悬账户数 --
+                  select p.ACCTNBR
+                    from EDW.F_GRYHKHFL_PARAM p
+                      INNER JOIN EDW.F_DEP_SAACNACN SA
+                        ON p.ACCTNBR =SA.SA_ACCT_NO
+                    where SA.SA_DEP_TYP ='98'
+                )
+        ) )  group by  客户号   ,客户姓名   ,证件号 
      ]]>
     </sql-value>
   </sql-info>

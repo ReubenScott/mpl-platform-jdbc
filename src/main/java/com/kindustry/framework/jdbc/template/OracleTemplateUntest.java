@@ -13,8 +13,12 @@ import com.kindustry.framework.jdbc.core.JdbcTemplate;
 import com.kindustry.framework.jdbc.orm.ColumnField;
 import com.kindustry.framework.jdbc.support.Pagination;
 
-
-public class DB2Template extends JdbcTemplate {
+/**
+ * 未测试
+ * @author reuben
+ *
+ */
+public class OracleTemplateUntest extends JdbcTemplate {
 
   /***
    * 
@@ -368,13 +372,16 @@ public class DB2Template extends JdbcTemplate {
     return execute(sql.toString());
   }
 
-  
-  
   @Override
   public Pagination queryPageBySQL(String sql, int startIndex, int pageSize, Object... params) {
-    // TODO Auto-generated method stub
-    return null;
+    // TODO Auto-generated method stub {
+    StringBuffer querySQL = new StringBuffer();
+    querySQL.append("select * from (select my_table.*,rownum as my_rownum from(").append(sql).append(") my_table where rownum<").append(startIndex + pageSize).append(
+        ") where my_rownum>=").append(startIndex);
+
+    return null ;
   }
+
   
   @Override
   public Pagination querySamplePageBySQL(Class sample, String sql, int startIndex, int pageSize, Object... params) {

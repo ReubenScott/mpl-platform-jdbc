@@ -75,6 +75,7 @@ import com.kindustry.framework.jdbc.Restrictions;
 import com.kindustry.framework.jdbc.context.JdbcConfig;
 import com.kindustry.framework.jdbc.core.JdbcTemplate;
 import com.kindustry.framework.jdbc.orm.ColumnField;
+import com.kindustry.framework.jdbc.support.Pagination;
 import com.kindustry.framework.jdbc.template.DB2Template;
 import com.kindustry.framework.jdbc.template.MySQLTemplate;
 import com.kindustry.framework.jdbc.template.PostgreSQLTemplate;
@@ -310,6 +311,7 @@ public abstract class JdbcTemplate {
     }
     return javaObj;
   }
+  
 
   public static void setParameters(PreparedStatement pstmt, List parameters) throws SQLException {
     for (int i = 1, size = parameters.size(); i <= size; i++) {
@@ -455,6 +457,24 @@ public abstract class JdbcTemplate {
    * @return
    */
   public abstract boolean isTableExits(String schema, String tableName);
+  
+  /**
+   * 全量 更新数据
+   * 
+   * @param srcTabName
+   * @param destTabName
+   * @return
+   */
+  public abstract boolean replaceTable(String srcSchema, String srcTabName, String targetSchema, String destTabName);
+  
+  /**
+   * 增量 更新数据
+   * 
+   * @param srcTabName
+   * @param destTabName
+   * @return
+   */
+  public abstract boolean insertTable(String srcSchema, String srcTabName, String targetSchema, String destTabName);
 
   /**
    * 变量 更新数据
@@ -478,14 +498,10 @@ public abstract class JdbcTemplate {
    *          int
    * @return HashMap[]
    */
-  public HashMap[] queryPageSQL(String sql, int startIndex, int size, Object... paramList) {
-    StringBuffer querySQL = new StringBuffer();
-    querySQL.append("select * from (select my_table.*,rownum as my_rownum from(").append(sql).append(") my_table where rownum<").append(startIndex + size).append(
-        ") where my_rownum>=").append(startIndex);
-
-    return queryForMap(querySQL.toString(), paramList);
-  }
-
+  public abstract Pagination queryPageBySQL(String sql, final int startIndex, final int pageSize, Object... params) ;
+  
+  public abstract Pagination querySamplePageBySQL(Class sample, String sql, int startIndex, int pageSize, Object... params) ;
+  
   /**
    * 删除表
    * 
@@ -1413,13 +1429,8 @@ public abstract class JdbcTemplate {
     ResultSet rs = null;
     try {
       ps = conn.prepareStatement(sql);
-      if (params != null) {
-        for (int i = 0; i < params.length; i++) {
-          ps.setObject(i + 1, params[i]);
-        }
-      }
+      this.setPreparedValues(ps, params);
       rs = ps.executeQuery();
-
       ResultSetMetaData rsmdt = rs.getMetaData();
       String[] colNames = new String[rsmdt.getColumnCount()];
       for (int i = 1; i <= rsmdt.getColumnCount(); i++) {
@@ -1461,7 +1472,7 @@ public abstract class JdbcTemplate {
    *          ArrayList
    * @return int
    */
-  public int queryCountResult(String sql, Object... params) {
+  public long queryCountResult(String sql, Object... params) {
     Connection conn = getConnection();
     PreparedStatement ps = null;
     ResultSet rs = null;
@@ -1472,7 +1483,7 @@ public abstract class JdbcTemplate {
       this.setPreparedValues(ps, params);
       rs = ps.executeQuery();
       if (rs.next()) {
-        return rs.getInt(1);
+        return rs.getLong(1);
       } else {
         return 0;
       }
@@ -1498,6 +1509,20 @@ public abstract class JdbcTemplate {
     ResultSet rs = null;
     List<T> list = new ArrayList<T>();
     try {
+      Map<String,String> mapper = new HashMap<String,String>();
+      /* 通过获取类的类注解，来获取类映射的表名称 */
+      if (sample.isAnnotationPresent(Table.class)) { // 如果类映射了表
+        /* 遍历所有的字段 */
+        Field[] fields = sample.getDeclaredFields();// 获取类的字段信息
+        for (Field field : fields) {
+          if (field.isAnnotationPresent(Column.class)) {
+            Column col = field.getAnnotation(Column.class); // 获取列注解
+            String columnName = col.name().toLowerCase(); // 数据库映射字段
+            String fieldName = field.getName(); // 获取字段名称
+            mapper.put(columnName, fieldName);
+          }
+        }
+      }
       // conn.setReadOnly(true);
       ps = conn.prepareStatement(sql);
       this.setPreparedValues(ps, params);
@@ -1506,7 +1531,12 @@ public abstract class JdbcTemplate {
       while (rs.next()) {
         Map<String, Object> map = new HashMap<String, Object>();
         for (int i = 1; i <= rsmdt.getColumnCount(); i++) {
-          map.put(rsmdt.getColumnLabel(i), rs.getObject(i)); // 别称 sql 中 AS 后面的
+          String label = rsmdt.getColumnLabel(i) ;
+          String fieldName = mapper.get(label.toLowerCase());
+          if(StringUtil.isEmpty(fieldName)){
+            fieldName = label ;
+          }
+          map.put(fieldName, rs.getObject(i)); // 别称 sql 中 AS 后面的
         }
         list.add((T) BeanUtil.autoPackageBean(sample, map));
       }
