@@ -2,17 +2,14 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
   <modelVersion>4.0.0</modelVersion>
 
-  <groupId>com.kindustry</groupId>
   <artifactId>jdbc</artifactId>
-  <version>0.0.1-SNAPSHOT</version>
-
   <packaging>jar</packaging>
 
   <parent>
     <groupId>com.kindustry</groupId>
-    <artifactId>epl-parent-pom</artifactId>
-    <version>1.0-SNAPSHOT</version>
-    <relativePath>../epl-parent-pom</relativePath>
+    <artifactId>mpl-platform-pom</artifactId>
+    <version>1.0</version>
+    <relativePath>../mpl-platform-pom</relativePath>
   </parent>
 
 
@@ -40,7 +37,7 @@
 
     <!-- PostgreSQL -->
     <dependency>
-      <groupId>postgresql</groupId>
+      <groupId>org.postgresql</groupId>
       <artifactId>postgresql</artifactId>
     </dependency>
 
@@ -52,21 +49,6 @@
       <artifactId>persistence-api</artifactId>
     </dependency>
 
-    <!-- Json Start  -->
-    <dependency>
-      <groupId>org.codehaus.jackson</groupId>
-      <artifactId>jackson-core-asl</artifactId>
-    </dependency>
-    <dependency>
-      <groupId>org.codehaus.jackson</groupId>
-      <artifactId>jackson-mapper-asl</artifactId>
-    </dependency>
-    <!-- Json End  -->
-
-    <dependency>
-      <groupId>commons-dbcp</groupId>
-      <artifactId>commons-dbcp</artifactId>
-    </dependency>
 
     <dependency>
       <groupId>org.apache.commons</groupId>
