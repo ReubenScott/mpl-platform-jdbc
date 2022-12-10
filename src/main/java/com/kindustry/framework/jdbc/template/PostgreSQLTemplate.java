@@ -8,7 +8,7 @@ import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.List;
 
-import com.kindustry.common.util.StringUtil;
+import com.kindustry.common.util.StringUtility;
 import com.kindustry.framework.jdbc.core.JdbcTemplate;
 import com.kindustry.framework.jdbc.orm.ColumnField;
 import com.kindustry.framework.jdbc.support.Pagination;
@@ -70,7 +70,7 @@ public class PostgreSQLTemplate extends JdbcTemplate {
    */
   public boolean isTableExits(String schema, String tableName) {
     boolean flag = false;
-    schema = StringUtil.isEmpty(schema) ? null : schema.toUpperCase();
+    schema = StringUtility.isEmpty(schema) ? null : schema.toUpperCase();
     Connection connection = getConnection();
     DatabaseMetaData meta;
     ResultSet rs = null;
@@ -104,7 +104,7 @@ public class PostgreSQLTemplate extends JdbcTemplate {
       DatabaseMetaData dbmd = connection.getMetaData();
 
       // 获取 schema
-      if (StringUtil.isEmpty(schema)) {
+      if (StringUtility.isEmpty(schema)) {
         schema = getCurrentSchema();
       }
       rs = dbmd.getColumns(connection.getCatalog(), schema.toLowerCase(), tablename.toLowerCase(), null);
@@ -145,7 +145,7 @@ public class PostgreSQLTemplate extends JdbcTemplate {
     try {
       st = connection.createStatement();
       String stabName = null;
-      if (!StringUtil.isEmpty(schema)) {
+      if (!StringUtility.isEmpty(schema)) {
         stabName = schema.trim() + "." + tablename.trim();
       } else {
         stabName = tablename.trim();

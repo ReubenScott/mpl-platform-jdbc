@@ -6,7 +6,6 @@ import java.util.List;
 import org.junit.Before;
 import org.junit.Test;
 
-import com.kindustry.common.constant.CharSetType;
 import com.kindustry.framework.jdbc.core.JdbcTemplate;
 
 public class JdbcTemplateTest {

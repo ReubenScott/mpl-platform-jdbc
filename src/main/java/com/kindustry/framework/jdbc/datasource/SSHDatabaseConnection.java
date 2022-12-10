@@ -21,7 +21,7 @@ import com.jcraft.jsch.Channel;
 import com.jcraft.jsch.JSch;
 import com.jcraft.jsch.JSchException;
 import com.jcraft.jsch.Session;
-import com.kindustry.common.util.StringUtil;
+import com.kindustry.common.util.StringUtility;
 import com.mysql.jdbc.jdbc2.optional.MysqlDataSource;
 
 public class SSHDatabaseConnection {
@@ -164,7 +164,7 @@ public class SSHDatabaseConnection {
             Properties config = new Properties();
             JSch jsch = new JSch();
             session = jsch.getSession(sshuser, sshHost, sshPort);
-            if (StringUtil.isEmpty(sshKeyFilepath)) {
+            if (StringUtility.isEmpty(sshKeyFilepath)) {
               session.setPassword(sshPassword);
             } else {
               jsch.addIdentity(sshKeyFilepath); // 私密

@@ -10,7 +10,7 @@ import org.apache.poi.ss.usermodel.Workbook;
 import org.junit.Before;
 import org.junit.Test;
 
-import com.kindustry.common.date.DateUtil;
+import com.kindustry.common.util.DateUtility;
 import com.kindustry.framework.jdbc.core.JdbcTemplate;
 import com.kindustry.framework.xml.XmlSqlMapper;
 
@@ -43,24 +43,24 @@ public class QDNSHDailyTest {
 
   @Test
   public void testExecute() {
-    Date startDate = DateUtil.getShortDate("2017-01-01") ;
-    Date endDate = DateUtil.getShortDate("2017-11-21") ;
+    Date startDate = DateUtility.getShortDate("2017-01-01") ;
+    Date endDate = DateUtility.getShortDate("2017-11-21") ;
     
     int interval =  1 ;
     Date eachDate =  startDate ;
     
-    while( DateUtil.isBefore(eachDate, endDate) ){
-      Date monEnd = DateUtil.getLastDayOfMonth(eachDate) ;
+    while( DateUtility.isBefore(eachDate, endDate) ){
+      Date monEnd = DateUtility.getLastDayOfMonth(eachDate) ;
       
-      if(DateUtil.isSameDay(eachDate, monEnd) ){
-        System.out.println(DateUtil.formatShortDate(eachDate));
+      if(DateUtility.isSameDay(eachDate, monEnd) ){
+        System.out.println(DateUtility.formatShortDate(eachDate));
       } else {
-        String sql =  "delete from S_DEP_TD_ACCOUNT_D where statdate = '" + DateUtil.formatShortDate(eachDate) + "' ";
+        String sql =  "delete from S_DEP_TD_ACCOUNT_D where statdate = '" + DateUtility.formatShortDate(eachDate) + "' ";
         System.out.println(sql);
         jdbc.execute(sql); 
       }
 
-      eachDate =  DateUtil.addDays(eachDate, interval);
+      eachDate =  DateUtility.addDays(eachDate, interval);
     }
     
   }

@@ -27,7 +27,7 @@ import org.dom4j.io.SAXReader;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.kindustry.common.util.StringUtil;
+import com.kindustry.common.util.StringUtility;
 import com.kindustry.framework.jdbc.context.JdbcConfig;
 
 @SuppressWarnings("unchecked")
@@ -60,7 +60,7 @@ public class DynamicDataSource {
 
   public static String getDBAlias(){
     String alias  = DBALIAS.get() ;
-    if (StringUtil.isEmpty(alias)) {
+    if (StringUtility.isEmpty(alias)) {
       DBALIAS.set(defaultDBalias);
     }
     return alias;
@@ -116,7 +116,7 @@ public class DynamicDataSource {
       for (int i = 0; i < defaultdb.size(); ++i) {
         Element stmt = (Element) defaultdb.get(i);
         String alias = stmt.getText();
-        if (StringUtil.isEmpty(alias)) {
+        if (StringUtility.isEmpty(alias)) {
           // throw new XSmartException("statement's \"id\" should not be empty!");
         } else {
           defaultDBalias = alias.trim();
@@ -231,7 +231,7 @@ public class DynamicDataSource {
    * @return
    */
   public Connection getSingleConnection(String dbalias) {
-    if (StringUtil.isEmpty(dbalias)) {
+    if (StringUtility.isEmpty(dbalias)) {
       dbalias = defaultDBalias;
     }
     JdbcConfig dbconf = jdbcConfigMap.get(dbalias);
@@ -337,7 +337,7 @@ public class DynamicDataSource {
   public final synchronized Connection checkOut(String alias) {
     long now = System.currentTimeMillis();
 
-    if (StringUtil.isEmpty(alias)) {
+    if (StringUtility.isEmpty(alias)) {
       alias = defaultDBalias;
     }
     
@@ -413,7 +413,7 @@ public class DynamicDataSource {
    * @param objPool .
    */
   public final synchronized void checkIn(String alias , Connection connection) {
-    if (StringUtil.isEmpty(alias)) {
+    if (StringUtility.isEmpty(alias)) {
       alias = defaultDBalias;
     }
     Vector<Connection> idleConnections = idleConn.get(alias);

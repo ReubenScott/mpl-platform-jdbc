@@ -11,8 +11,9 @@ import java.util.Hashtable;
 import org.apache.poi.ss.usermodel.Workbook;
 import org.junit.Before;
 import org.junit.Test;
+       
 
-import com.kindustry.common.constant.CharSetType;
+import com.kindustry.system.constant.CharSetType;
 import com.kindustry.framework.jdbc.core.JdbcTemplate;
 import com.kindustry.framework.xml.XmlSqlMapper;
 

@@ -3,6 +3,7 @@
   <modelVersion>4.0.0</modelVersion>
 
   <artifactId>jdbc</artifactId>
+
   <packaging>jar</packaging>
 
   <parent>
@@ -49,6 +50,25 @@
       <artifactId>persistence-api</artifactId>
     </dependency>
 
+    <!-- Json Start  -->
+    <dependency>
+      <groupId>com.fasterxml.jackson.core</groupId>
+      <artifactId>jackson-core</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>com.fasterxml.jackson.core</groupId>
+      <artifactId>jackson-annotations</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>com.fasterxml.jackson.core</groupId>
+      <artifactId>jackson-databind</artifactId>
+    </dependency>
+    <!-- Json End  -->
+
+    <dependency>
+      <groupId>commons-dbcp</groupId>
+      <artifactId>commons-dbcp</artifactId>
+    </dependency>
 
     <dependency>
       <groupId>org.apache.commons</groupId>

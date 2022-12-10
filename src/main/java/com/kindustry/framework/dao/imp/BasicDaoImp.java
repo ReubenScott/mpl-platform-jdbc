@@ -8,7 +8,7 @@ import org.apache.poi.ss.usermodel.Workbook;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.kindustry.common.util.BeanUtil;
+import com.kindustry.common.util.BeanUtility;
 import com.kindustry.framework.dao.IBasicDao;
 import com.kindustry.framework.jdbc.Restrictions;
 import com.kindustry.framework.jdbc.core.JdbcTemplate;
@@ -83,7 +83,7 @@ public class BasicDaoImp implements IBasicDao {
   }
 
   public boolean saveAnnotatedEntity(List<?> annoEntities) {
-    return jdbcTemplate.saveAnnotatedEntity(BeanUtil.listToArray(annoEntities));
+    return jdbcTemplate.saveAnnotatedEntity(BeanUtility.listToArray(annoEntities));
   }
 
   public boolean truncateTable(String schema, String tablename) {

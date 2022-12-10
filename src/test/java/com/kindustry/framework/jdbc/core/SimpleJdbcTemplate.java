@@ -17,12 +17,12 @@ import java.util.Map;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
-import com.kindustry.framework.exception.DataAccessException;
 import com.kindustry.framework.jdbc.core.ProcedureCallBack;
 import com.kindustry.framework.jdbc.core.ProcedureResult;
 import com.kindustry.framework.jdbc.core.RowMapper;
 import com.kindustry.framework.jdbc.core.SimpleJdbcTemplate;
 import com.kindustry.framework.jdbc.util.JdbcUtils;
+import com.kindustry.system.exception.DataAccessException;
 
 /**
  * <p>

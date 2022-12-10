@@ -61,16 +61,16 @@ import org.slf4j.LoggerFactory;
 import au.com.bytecode.opencsv.CSVReader;
 import au.com.bytecode.opencsv.CSVWriter;
 
-import com.kindustry.common.constant.CharSetType;
-import com.kindustry.common.constant.DateBaseType;
-import com.kindustry.common.constant.DateStyle;
-import com.kindustry.common.date.DateUtil;
-import com.kindustry.common.io.FileUtil;
+import com.kindustry.system.constant.CharSetType;
+import com.kindustry.system.constant.DateBaseType;
+import com.kindustry.system.constant.DateStyle;
+import com.kindustry.common.io.FileUtility;
 import com.kindustry.common.io.IOHandler;
 import com.kindustry.common.io.ImportUtility;
 import com.kindustry.common.io.PropertyReader;
-import com.kindustry.common.util.BeanUtil;
-import com.kindustry.common.util.StringUtil;
+import com.kindustry.common.util.BeanUtility;
+import com.kindustry.common.util.DateUtility;
+import com.kindustry.common.util.StringUtility;
 import com.kindustry.framework.jdbc.Restrictions;
 import com.kindustry.framework.jdbc.context.JdbcConfig;
 import com.kindustry.framework.jdbc.core.JdbcTemplate;
@@ -399,13 +399,13 @@ public abstract class JdbcTemplate {
         result = new BigDecimal(value.equals("") ? "0" : value);
         break;
       case Types.DATE: // 2016-2-25
-        result = DateUtil.parseShortDate(value);
+        result = DateUtility.parseShortDate(value);
         break;
       case Types.TIMESTAMP: // 2016-2-25 7:41:18 时间戳
-        result = new java.sql.Timestamp(DateUtil.parseDateTime(value).getTime());
+        result = new java.sql.Timestamp(DateUtility.parseDateTime(value).getTime());
         break;
       case Types.TIME:
-        result = new java.sql.Time(DateUtil.parseDateTime(value).getTime());
+        result = new java.sql.Time(DateUtility.parseDateTime(value).getTime());
         break;
       default:
         logger.error("JdbcTemplate castDBType()  lost Data  type : " + columnType);
@@ -510,10 +510,10 @@ public abstract class JdbcTemplate {
    * @return
    */
   public boolean dropTable(String schema, String tableName) {
-    schema = StringUtil.isEmpty(schema) ? null : schema.toUpperCase();
+    schema = StringUtility.isEmpty(schema) ? null : schema.toUpperCase();
     if (isTableExits(schema, tableName)) {
       this.truncateTable(schema, tableName);
-      if (StringUtil.isEmpty(schema)) {
+      if (StringUtility.isEmpty(schema)) {
         this.execute("Drop table " + tableName);
       } else {
         this.execute("Drop table " + schema + "." + tableName);
@@ -563,7 +563,7 @@ public abstract class JdbcTemplate {
       tablename = table.name().trim(); // 获得表名
 
       // 拼接 SQL 语句
-      if (StringUtil.isEmpty(schema)) {
+      if (StringUtility.isEmpty(schema)) {
         sql.append(tablename);
       } else {
         sql.append(schema.trim() + "." + tablename);
@@ -577,7 +577,7 @@ public abstract class JdbcTemplate {
         if (field.isAnnotationPresent(Column.class)  ) {
           Column col = field.getAnnotation(Column.class); // 获取列注解
           String columnName = col.name(); // 数据库映射字段
-          if (StringUtil.isEmpty(columnName)) { // name 未指定 ，设置默认 为 字段名
+          if (StringUtility.isEmpty(columnName)) { // name 未指定 ，设置默认 为 字段名
             columnName = field.getName();
           }
           String fieldName = field.getName(); // 获取字段名称
@@ -666,7 +666,7 @@ public abstract class JdbcTemplate {
       schema = table.schema();
       tablename = table.name();
 
-      if (!StringUtil.isEmpty(schema)) {
+      if (!StringUtility.isEmpty(schema)) {
         sql.append(schema + ".");
       }
       sql.append(tablename + " set ");
@@ -766,7 +766,7 @@ public abstract class JdbcTemplate {
         tablename = table.name().trim(); // 获得表名
 
         // 拼接 SQL 语句
-        if (StringUtil.isEmpty(schema)) {
+        if (StringUtility.isEmpty(schema)) {
           sql.append(tablename);
         } else {
           sql.append(schema.trim() + "." + tablename);
@@ -787,7 +787,7 @@ public abstract class JdbcTemplate {
             Column col = field.getAnnotation(Column.class); // 获取列注解
 
             String columnName = col.name(); // 数据库映射字段
-            if (StringUtil.isEmpty(columnName)) { // name 未指定 ，设置默认 为 字段名
+            if (StringUtility.isEmpty(columnName)) { // name 未指定 ，设置默认 为 字段名
               columnName = field.getName();
             }
             columns.add(columnName);
@@ -858,7 +858,7 @@ public abstract class JdbcTemplate {
       tablename = table.name().trim(); // 获得表名
 
       // 拼接 SQL 语句
-      if (StringUtil.isEmpty(schema)) {
+      if (StringUtility.isEmpty(schema)) {
         sql.append(tablename);
       } else {
         sql.append(schema.trim() + "." + tablename);
@@ -870,7 +870,7 @@ public abstract class JdbcTemplate {
         if (field.isAnnotationPresent(Column.class) && field.isAnnotationPresent(Id.class) ) {
           Column col = field.getAnnotation(Column.class); // 获取列注解
           String columnName = col.name(); // 数据库映射字段
-          if (StringUtil.isEmpty(columnName)) { // name 未指定 ，设置默认 为 字段名
+          if (StringUtility.isEmpty(columnName)) { // name 未指定 ，设置默认 为 字段名
             columnName = field.getName();
           }
           condition.append(" and " + columnName + "=" + "?");
@@ -1075,7 +1075,7 @@ public abstract class JdbcTemplate {
               annoFields.add(field);
               Column col = field.getAnnotation(Column.class); // 获取列注解
               String columnName = col.name(); // 数据库映射字段
-              if (StringUtil.isEmpty(columnName)) { // name 未指定 ，设置默认 为 字段名
+              if (StringUtility.isEmpty(columnName)) { // name 未指定 ，设置默认 为 字段名
                 columnName = field.getName();
               }
               if (columns.size() == 0) {
@@ -1124,12 +1124,12 @@ public abstract class JdbcTemplate {
     // String sql = "insert into " + tablename + "(" +
     // StringUtil.arrayToString(columns) + ") values (" + values + ")";
     StringBuffer sql = new StringBuffer("insert into ");
-    if (StringUtil.isEmpty(schema)) {
+    if (StringUtility.isEmpty(schema)) {
       sql.append(tablename);
     } else {
       sql.append(schema.trim() + "." + tablename);
     }
-    sql.append(" (" + StringUtil.arrayToString(columns) + ") values (" + values + ")");
+    sql.append(" (" + StringUtility.arrayToString(columns) + ") values (" + values + ")");
 
     return executeBatch(sql.toString(), paramList);
   }
@@ -1533,12 +1533,12 @@ public abstract class JdbcTemplate {
         for (int i = 1; i <= rsmdt.getColumnCount(); i++) {
           String label = rsmdt.getColumnLabel(i) ;
           String fieldName = mapper.get(label.toLowerCase());
-          if(StringUtil.isEmpty(fieldName)){
+          if(StringUtility.isEmpty(fieldName)){
             fieldName = label ;
           }
           map.put(fieldName, rs.getObject(i)); // 别称 sql 中 AS 后面的
         }
-        list.add((T) BeanUtil.autoPackageBean(sample, map));
+        list.add((T) BeanUtility.autoPackageBean(sample, map));
       }
     } catch (SQLException e) {
       e.printStackTrace();
@@ -1649,8 +1649,8 @@ public abstract class JdbcTemplate {
       params.addAll(term.getParams());
     }
 
-    String sql = "select " + StringUtil.arrayToString(columns) + " from ";
-    if (!StringUtil.isEmpty(schema)) {
+    String sql = "select " + StringUtility.arrayToString(columns) + " from ";
+    if (!StringUtility.isEmpty(schema)) {
       sql += schema + ".";
     }
 
@@ -1671,7 +1671,7 @@ public abstract class JdbcTemplate {
         for (int i = 1; i <= rsmd.getColumnCount(); i++) {
           map.put(fieldNames.get(i - 1), rs.getObject(i));
         }
-        obj = (T) BeanUtil.autoPackageBean(stuClass, map);
+        obj = (T) BeanUtility.autoPackageBean(stuClass, map);
         break;
       }
     } catch (SQLException e) {
@@ -1747,8 +1747,8 @@ public abstract class JdbcTemplate {
       params.addAll(term.getParams());
     }
 
-    String sql = "select " + StringUtil.arrayToString(columns) + " from ";
-    if (!StringUtil.isEmpty(schema)) {
+    String sql = "select " + StringUtility.arrayToString(columns) + " from ";
+    if (!StringUtility.isEmpty(schema)) {
       sql += schema + ".";
     }
 
@@ -1769,7 +1769,7 @@ public abstract class JdbcTemplate {
         for (int i = 1; i <= rsmd.getColumnCount(); i++) {
           map.put(fieldNames.get(i - 1), rs.getObject(i));
         }
-        T obj = (T) BeanUtil.autoPackageBean(stuClass, map);
+        T obj = (T) BeanUtility.autoPackageBean(stuClass, map);
         result.add(obj);
       }
     } catch (SQLException e) {
@@ -1830,9 +1830,9 @@ public abstract class JdbcTemplate {
     Workbook workbook = this.exportNamedWorkbook(sheetTitle, sql, params);
     FileOutputStream out = null;
     try {
-      String folderPath = FileUtil.getFileDirPath(filepath);
-      if (!FileUtil.isDirectoryExits(folderPath)) { // 目录不存在
-        FileUtil.newFolder(folderPath);
+      String folderPath = FileUtility.getFileDirPath(filepath);
+      if (!FileUtility.isDirectoryExits(folderPath)) { // 目录不存在
+        FileUtility.newFolder(folderPath);
       }
       out = new FileOutputStream(filepath);
       workbook.write(out);
@@ -1875,7 +1875,7 @@ public abstract class JdbcTemplate {
     Sheet sheet = null;
 
     // 创建一个Excel的Sheet
-    if (StringUtil.isEmpty(sheetTitle)) {
+    if (StringUtility.isEmpty(sheetTitle)) {
       sheet = workbook.createSheet();
     } else {
       sheet = workbook.createSheet(sheetTitle);
@@ -1950,7 +1950,7 @@ public abstract class JdbcTemplate {
               break;
             case Types.TIME:
               cell.setCellStyle(timeStyle);
-              cell.setCellValue(DateUtil.formatDate(rs.getTime(i + 1), DateStyle.TIMEFORMAT));
+              cell.setCellValue(DateUtility.formatDate(rs.getTime(i + 1), DateStyle.TIMEFORMAT));
               break;
             case Types.DOUBLE:
             case Types.REAL:
@@ -2165,7 +2165,7 @@ public abstract class JdbcTemplate {
       Workbook xwb = WorkbookFactory.create(new FileInputStream(filePath));
 
       // 获取 schema
-      if (StringUtil.isEmpty(schema)) {
+      if (StringUtility.isEmpty(schema)) {
         schema = getCurrentSchema();
       }
 
@@ -2176,7 +2176,7 @@ public abstract class JdbcTemplate {
       // 根据表名 生成 Insert语句
       // "insert into CBOD_ECCMRAMR values (?, ?, ?, ?, ?, ?, ?,?, ?, ?, ?, ?, ?, ?,?,?,?)"
       StringBuffer sql;
-      if (StringUtil.isEmpty(schema)) {
+      if (StringUtility.isEmpty(schema)) {
         sql = new StringBuffer("insert into " + tablename + " values (");
       } else {
         sql = new StringBuffer("insert into " + schema.trim() + "." + tablename + " values (");
@@ -2209,7 +2209,7 @@ public abstract class JdbcTemplate {
           String cellobjTmp = ImportUtility.getCellContent(row.getCell(j));
           cells.add(cellobjTmp);
           // 判断空
-          if (StringUtil.isEmpty(cellobjTmp)) {
+          if (StringUtility.isEmpty(cellobjTmp)) {
             cellnullcount++;
           }
         }
